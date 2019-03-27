@@ -1,0 +1,379 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body onload="init()">
+
+<script>
+    {% include 'common.js' %}
+
+    document.onkeydown = handleKeyDown;
+    document.onkeyup = handleKeyUp;
+
+    let trajectory_filenames = [];
+    let rollout_dict = {}; //{key: metadata filename of rollout group, value: chosen rollout hash}
+    let curr_rollout_group = null;
+
+    function init() {
+        updateTrajectoryList();
+        updateGraphs();
+    }
+
+    function updateTrajectoryList() {
+        $.get('/get_trajectory_list', function (data) {
+            trajectory_filenames = JSON.parse(data).sort();
+            if (trajectory_filenames.length === 0) {
+                return;
+            }
+            let trajectorySelect = $('#trajectory_select');
+            let selectedIndex = trajectorySelect[0].selectedIndex;
+            trajectorySelect.empty();
+            $(trajectory_filenames).each(function (i, v) {
+                $('#trajectory_select').append($('<option>', {value: v, html: v}));
+            });
+            trajectorySelect[0].selectedIndex = selectedIndex;
+        });
+    }
+
+    function getRolloutGroupsForTrajectory() {
+        let trajectorySelect = $('#trajectory_select');
+        let selectedIndex = trajectorySelect[0].selectedIndex;
+        let selectedTrajectory = trajectory_filenames[selectedIndex];
+        let url = "/get_rollout_groups_for_trajectory?trajectory_name=" + selectedTrajectory;
+        $.get(url, function (data) {
+            let parsedData = JSON.parse(data);
+            if (parsedData.length === 0) {
+                return;
+            }
+
+            let rolloutSelect = $('#rollout_select');
+            rolloutSelect.empty();
+            rollout_dict = parsedData;
+            let rollout_groups = Object.keys(rollout_dict);
+            $(rollout_groups).each(function (i, v) {
+                $('#rollout_select').append($('<option>', {value: i, html: i}));
+            });
+
+            updateRolloutVideos();
+            showFullTrajectory(selectedTrajectory);
+        });
+    }
+
+    function showFullTrajectory(trajectory_filename) {
+        let trajectorySelect = $('#trajectory_select');
+        let selectedIndex = trajectorySelect[0].selectedIndex;
+        let trajectory_vid_filename = "demonstrated_" + trajectory_filenames[selectedIndex] + ".mp4";
+        var vid = document.getElementById("trajectory_video");
+        vid.src = "/get_video?trajectory=" + getCurrTrajectory()
+            + "&filename=" + trajectory_vid_filename;
+        setPlaybackRate();
+    }
+
+    function getCurrTrajectory() {
+        let trajectorySelect = $('#trajectory_select');
+        let selectedIndex = trajectorySelect[0].selectedIndex;
+        return trajectory_filenames[selectedIndex];
+    }
+
+    function mean(arr) {
+        var sum = 0;
+        for (var i = 0; i < arr.length; i++) {
+            let currVal = arr[i];
+            sum += currVal;
+        }
+        return sum / arr.length;
+    }
+
+    function range(start, end) {
+        var arr = [];
+        for (var i = 0; i < end - start + 1; i++) {
+            arr[i] = start + i;
+        }
+        return arr;
+    }
+
+    function plotTimestampDeltas(timestampDeltas) {
+        let meanDelta = mean(timestampDeltas)
+        var timestampDeltasHistogram = {
+            x: timestampDeltas,
+            type: 'histogram',
+            xbins: {
+                start: 0,
+                end: 20,
+                size: 0.5
+            }
+        };
+        var histogramlayout = {
+            bargap: 0.05,
+            bargroupgap: 0.2,
+            barmode: "overlay",
+            title: "Time taken to chose b/t rollouts",
+            xaxis: {title: "Time (s)"},
+            yaxis: {title: "Count"},
+            annotations: [
+                {
+                    xref: 'paper',
+                    yref: 'paper',
+                    x: 0.5,
+                    y: 0.5,
+                    xanchor: 'top', // w.r.t to top left corner
+                    yanchor: 'left',
+                    text: "mean: " + meanDelta.toFixed(3) + "s",
+                    font: {
+                        size: 16,
+                        color: 'black'
+                    },
+                    showarrow: false
+                }
+            ]
+        };
+        var histogramData = [timestampDeltasHistogram];
+        Plotly.newPlot('timestamp_deltas_graph', histogramData, histogramlayout);
+    }
+
+    function plotPolicyFreqs(policyFreqs) {
+        var freqData = [];
+        for (var policyName in policyFreqs) {
+            let freqArray = policyFreqs[policyName];
+            var freqTrace = {
+                x: range(1, freqArray.length),
+                y: freqArray,
+                name: policyName,
+                type: 'scatter'
+            };
+            freqData.push(freqTrace)
+        }
+        var freqLayout = {
+            title: "Policy chosen frequency",
+            xaxis: {title: "Per 10 rollouts"},
+            yaxis: {title: "Frequency"},
+        };
+        Plotly.newPlot('policy_freqs_graph', freqData, freqLayout);
+    }
+
+    function updateGraphs() {
+        let url = "/get_timestamp_deltas_and_policy_frequencies";
+        $.get(url, function (data) {
+            let parsedData = JSON.parse(data);
+            if (parsedData.length === 0) {
+                return;
+            }
+
+            let timestampDeltas = parsedData[0]
+            let policyFreqs = parsedData[1];
+
+            if (timestampDeltas.length === 0) {
+                return;
+            }
+
+            plotTimestampDeltas(timestampDeltas);
+            plotPolicyFreqs(policyFreqs);
+        });
+    }
+
+    function sortRolloutDictByPolicy(rollout_dict) {
+        // Create array of key-value tuples
+        // key = rollout_hash_str: value = (rollout.generating_policy, rollout.vid_filename, rollout.rewards)
+        // [(k1, v1), (k2, v2), ...]
+        var kv_tuples = Object.keys(rollout_dict).map(function(key) {
+          return [key, rollout_dict[key]];
+        });
+
+        // Sort the array based on the generating policy
+        kv_tuples.sort(function(first, second) {
+            return second[1][0].localeCompare(first[1][0]); //string comparison
+        });
+
+        return kv_tuples;
+    }
+
+    function updateRolloutVideos() {
+        let rolloutSelect = $('#rollout_select');
+        let selectedIndex = rolloutSelect[0].selectedIndex;
+        let rollout_groups = Object.keys(rollout_dict);
+        curr_rollout_group = rollout_groups[selectedIndex];
+        let chosen_rollout_hash = rollout_dict[curr_rollout_group];
+
+        let url = "/get_rollouts_for_group?metadata_filename=" + curr_rollout_group;
+        $.get(url, function (data) {
+            let parsedData = JSON.parse(data);
+            if (parsedData.length === 0) {
+                return;
+            }
+
+            let rolloutDict = parsedData;
+            let sortedRolloutDict = sortRolloutDictByPolicy(rolloutDict);
+            let nVidsSent = Object.keys(rolloutDict).length;
+            let $videos = $('#videos');
+            while ($('#videos video').length > nVidsSent) {
+                $('#videoFrames video').last().remove();
+                $('#videos video').last().remove();
+                $('#labels div').last().remove();
+            }
+            while ($('#videos video').length < nVidsSent) {
+                addVideo();
+                addLabel();
+            }
+
+            let rolloutHashes = [];
+            let $videoFrames = $('#videoFrames');
+            var i;
+            for (i = 0; i < sortedRolloutDict.length; i++) {
+                let rollout = sortedRolloutDict[i];
+                let rolloutHash = rollout[0];
+                rolloutHashes[i] = rolloutHash;
+
+                let vid = $videos.children()[i];
+                let rolloutVidFilename = rolloutDict[rolloutHash][1];
+                vid.src = '/get_video?trajectory=' + getCurrTrajectory() + '&filename=' + rolloutVidFilename;
+                vid.load();
+                vid.playbackRate = 2.0;
+
+                let vidFrame = $videoFrames.children()[i];
+                vidFrame.src = '/get_video?trajectory=' + getCurrTrajectory() + '&filename=' + rolloutVidFilename;
+                vidFrame.load();
+                vidFrame.onloadeddata = function(v) {
+                    return function () {
+                        v.currentTime = v.duration;
+                    }
+                }(vidFrame);
+
+                let label = $('#labels').children()[i];
+                let rolloutName = rolloutDict[rolloutHash][0];
+                let rolloutRewards = rolloutDict[rolloutHash][2];
+                let rewardSum = rolloutRewards.reduce((a, b) => a + b);
+                label.innerHTML = rolloutName + ' (' + rolloutHash + ')<br/>'
+                                + 'Reward for this segment: ' + rewardSum.toFixed(3); //3 decimal places
+                label.style.border = "none"; //clear any previous styling
+                if (rolloutHash === chosen_rollout_hash) {
+                    label.style.border = "3px solid green";
+                }
+            }
+        });
+    }
+
+    function setPlaybackRate() {
+        var vid = document.getElementById("trajectory_video");
+        var playbackSelect = document.getElementById("playback_rate");
+        var idx = playbackSelect.selectedIndex;
+        rate = parseFloat(playbackSelect.options[idx].value);
+        vid.playbackRate = rate;
+    }
+
+    function addVideo() {
+        let $video = $('<video />', {
+            type: 'video/mp4',
+            width: '400px',
+            autoplay: true,
+            loop: true,
+            controls: true
+        });
+        $video.appendTo($('#videos'));
+        let $videoFrame = $('<video />', {
+            type: 'video/mp4',
+            width: '400px',
+            controls: false
+        });
+        $videoFrame.appendTo($('#videoFrames'));
+    }
+
+    function addLabel() {
+        let div = $('<div>');
+        div.css('width', '400px');
+        div.css('display', 'inline-block');
+        div.css('text-align', 'center');
+        div.appendTo($('#labels'));
+    }
+
+    function pauseVideos() {
+        let vids = $('#videos').children();
+        for (let i = 0; i < vids.length; i++) {
+            vids[i].pause();
+        }
+    }
+
+    function nextTrajectory() {
+        let trajectorySelect = $("#trajectory_select")[0];
+        if (trajectorySelect.selectedIndex < trajectorySelect.length - 1) {
+            trajectorySelect.selectedIndex++;
+            getRolloutGroupsForTrajectory();
+        }
+    }
+
+    function nextRollout() {
+        let rolloutSelect = $("#rollout_select")[0];
+        if (rolloutSelect.selectedIndex < rolloutSelect.length - 1) {
+            rolloutSelect.selectedIndex++;
+            updateRolloutVideos();
+        }
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === "n") {
+            nextRollout();
+        }
+    }
+
+    function resetBoxes() {
+        $('#preferCheckbox').prop('checked', true);
+    }
+
+    function handleKeyUp(e) {
+        if (e.key === 'Control') {
+            resetBoxes();
+        }
+    }
+
+    $(window).blur(function () {
+        resetBoxes();
+    });
+</script>
+
+<div>
+    <label for="trajectory_select">Trajectory:</label>
+    <select id="trajectory_select" class="selectors" onchange="getRolloutGroupsForTrajectory()">
+    </select>
+</div>
+<input type="button" onclick="nextTrajectory()" value="Next trajectory">
+<br/><br/>
+
+The chosen rollout for each rollout group is highlighted in green
+<div>
+    <label for="rollout_select">Rollout group:</label>
+    <select id="rollout_select" class="selectors" onchange="updateRolloutVideos()">
+    </select>
+</div>
+<div id="videoFrames">
+</div>
+<div id="videos">
+</div>
+<div id="labels">
+</div>
+
+<p>Full trajectory:</p>
+<video width="500 px" controls id="trajectory_video">
+    <source type="video/mp4">
+</video>
+<div>
+    <label for="playback_rate">Playback rate:</label>
+    <select id="playback_rate" class="selectors" onchange="setPlaybackRate()">
+        <option value="1.0">1.0</option>
+        <option value="1.5">1.5</option>
+        <option value="2.0" selected="selected">2.0</option>
+        <option value="4.0">4.0</option>
+    </select>
+</div>
+
+<div id="timestamp_deltas_graph"></div>
+<div id="policy_freqs_graph"></div>
+
+<!--{% if hierarchical == true %}
+    <br/>
+    <label for="comparisonGraph">Comparison graph by rollout hash:</label>
+    <br/>
+    <img id="comparisonGraph"/>
+{% endif %}-->
+
+</body>
+</html>

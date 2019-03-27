@@ -1,0 +1,37 @@
+# Package requirements (Ubuntu 18.04):
+#   patchelf libopenmpi-dev libosmesa-dev libgl1-mesa-dev swig libglfw3-dev python-opengl ffmpeg tmux xvfb
+#
+# If you get:
+#   AttributeError: module '_Box2D' has no attribute 'RAND_LIMIT_swigconstant'
+# try reinstalling box2d-py.
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+scipy = "*"
+opencv-python = "*"
+easy-tf-log = "*"
+joblib = "*"
+matplotlib = "*"
+flask = "*"
+flask-cors = "*"
+networkx = "*"
+python-magic = "*"
+atari-py = "*"
+pillow = "*"
+pyopengl = "*"
+tmuxprocess = "*"
+mujoco-py = "*"
+"box2d" = "*"
+"box2d-py" = "*"
+pims = "*"
+memory-profiler = "*"
+moviepy = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3"
