@@ -1,0 +1,257 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body onload="init()">
+
+<script>
+    {% include 'common.js' %}
+
+    document.onkeydown = handleKeyDown;
+    document.onkeyup = handleKeyUp;
+
+    let rolloutGroup = null;
+    let rolloutHashes = [];
+
+    function init() {
+        updateSoftmaxDisplay($("#softmaxTemp").val());
+        updateVideos();
+    }
+
+    function generateRolloutsAndUpdateVideos() {
+        let rolloutPoliciesBox = $('#rolloutPoliciesBox');
+        let url = "/generate_rollouts?policies=" + rolloutPoliciesBox.val();
+        $.get(url, function () {
+            updateVideos();
+        });
+    }
+
+    function sortRolloutDictByPolicy(rollout_dict) {
+        // Create array of key-value tuples
+        // key = rollout_hash_str: value = (rollout.generating_policy, rollout.vid_filename, rollout.rewards)
+        // [(k1, v1), (k2, v2), ...]
+        var kv_tuples = Object.keys(rollout_dict).map(function(key) {
+          return [key, rollout_dict[key]];
+        });
+
+        // Sort the array based on the generating policy
+        kv_tuples.sort(function(first, second) {
+            return second[1][0].localeCompare(first[1][0]); //string comparison
+        });
+
+        return kv_tuples;
+    }
+
+    function testSortDict(rollout_dict) {
+        console.log("Before:");
+        console.log(rollout_dict);
+        console.log("After:");
+        console.log(sortRolloutDictByPolicy(rollout_dict));
+    }
+
+    function updateVideos() {
+        $.get('/get_rollouts', function (data) {
+            let parsedData = JSON.parse(data);
+            if (parsedData.length === 0) {
+                return;
+            }
+            rolloutGroup = parsedData[0];
+            let rolloutDict = parsedData[1];
+            let sortedRolloutDict = sortRolloutDictByPolicy(rolloutDict);
+            //testSortDict(rolloutDict);
+            let nVidsSent = Object.keys(rolloutDict).length;
+
+            let $videos = $('#videos');
+            while ($('#videos video').length > nVidsSent) {
+                $('#videoFrames video').last().remove();
+                $('#videos video').last().remove();
+                $('#labels div').last().remove();
+            }
+            while ($('#videos video').length < nVidsSent) {
+                addVideo();
+                addLabel();
+            }
+
+            rolloutHashes = [];
+            let $videoFrames = $('#videoFrames');
+            var i;
+            for (i = 0; i < sortedRolloutDict.length; i++) {
+                let rollout = sortedRolloutDict[i];
+                let rolloutHash = rollout[0];
+                rolloutHashes[i] = rolloutHash;
+
+                let vid = $videos.children()[i];
+                let rolloutVidFilename = rolloutDict[rolloutHash][1];
+                vid.src = '/get_rollout_video?filename=' + rolloutVidFilename;
+                vid.load();
+                vid.playbackRate = parseFloat($("#playback_rate option:selected").val());
+
+                let vidFrame = $videoFrames.children()[i];
+                vidFrame.src = '/get_rollout_video?filename=' + rolloutVidFilename;
+                vidFrame.load();
+                vidFrame.onloadeddata = function(v) {
+                    return function () {
+                        v.currentTime = v.duration;
+                    }
+                }(vidFrame);
+
+                let label = $('#labels').children()[i];
+                let rolloutName = rolloutDict[rolloutHash][0];
+                let rolloutRewards = rolloutDict[rolloutHash][2];
+                let rewardSum = rolloutRewards.reduce((a, b) => a + b);
+                label.innerHTML = rolloutName + ' (' + rolloutHash + ')<br/>'
+                                + 'Reward for this segment: ' + rewardSum.toFixed(3); //3 decimal places
+            }
+        });
+    }
+
+    function videoClick() {
+        let idx = $('video').index(this);
+        if (idx >= rolloutHashes.length) {
+            idx -= rolloutHashes.length;
+        }
+        console.log(idx);
+        chooseRollout(rolloutHashes[idx]);
+    }
+
+    function addVideo() {
+        let $video = $('<video />', {
+            type: 'video/mp4',
+            width: '400px',
+            autoplay: true,
+            loop: true,
+            controls: true
+        });
+        $video.click(videoClick);
+        $video.appendTo($('#videos'));
+        let $videoFrame = $('<video />', {
+            type: 'video/mp4',
+            width: '400px',
+            controls: false
+        });
+        $videoFrame.click(videoClick);
+        $videoFrame.appendTo($('#videoFrames'));
+    }
+
+    function addLabel() {
+        let div = $('<div>');
+        div.css('width', '400px');
+        div.css('display', 'inline-block');
+        div.css('text-align', 'center');
+        div.appendTo($('#labels'));
+    }
+
+    function pauseVideos() {
+        let vids = $('#videos').children();
+        for (let i = 0; i < vids.length; i++) {
+            vids[i].pause();
+        }
+    }
+
+    function chooseRollout(rolloutHash) {
+        pauseVideos();
+        let url =
+            "/choose_rollout?group=" + rolloutGroup +
+            "&hash=" + rolloutHash +
+            "&policies=" + $('#rolloutPoliciesBox').val() +
+            "&softmax_temp=" + $('#softmaxTemp').val();
+        $.get(url, function () {
+            updateVideos();
+        });
+    }
+
+    function handleKeyDown(e) {
+        let rolloutPoliciesBox = $('#rolloutPoliciesBox');
+        if (rolloutPoliciesBox.is(':focus')) {
+            return;
+        }
+
+        let rolloutHash;
+        if (e.key === 'e') {
+            rolloutHash = 'equal';
+        } else if (e.key === 'n') {
+            rolloutHash = 'none';
+        } else {
+            let n = parseInt(e.key);
+            if ((!isNaN(n)) && (n >= 1) && (n <= rolloutHashes.length)) {
+                rolloutHash = rolloutHashes[n - 1];
+            }
+        }
+        if (rolloutHash != null) {
+            chooseRollout(rolloutHash);
+        }
+    }
+
+    function resetBoxes() {
+        $('#preferCheckbox').prop('checked', true);
+    }
+
+    function handleKeyUp(e) {
+        if (e.key === 'Control') {
+            resetBoxes();
+        }
+    }
+
+    function updateSoftmaxDisplay(value) {
+        $("input[type=range]#softmaxTemp").val(value);
+        $("input[type=text]#softmaxDisplay").val($('#softmaxTemp').val()); //only change the display value if it's in range
+    }
+
+    function setPlaybackRate() {
+        $("video").each(function() {
+            var playbackSelect = document.getElementById("playback_rate");
+            var idx = playbackSelect.selectedIndex;
+            rate = parseFloat(playbackSelect.options[idx].value);
+            $(this)[0].playbackRate = rate; //this refers to the current iteration's video element
+            console.log("changed rate of " + $(this) + " to: " + $(this)[0].playbackRate);
+        });
+    }
+
+    $(window).blur(function () {
+        resetBoxes();
+    });
+</script>
+
+<label for="softmaxTemp">Adjust randomness (softmax temperature): </label>
+<input type="range" min="0" max="10" value="1" step="0.01" class="slider"
+       id="softmaxTemp" onchange="updateSoftmaxDisplay(this.value)">
+<input type="text" id="softmaxDisplay" name="softmaxDisplay" onchange="updateSoftmaxDisplay(this.value)">
+<br/><br/>
+
+<label for="rolloutPoliciesBox">Generate rollouts from policies: </label>
+<input type="text" id="rolloutPoliciesBox" size="30">
+<br/><br />
+
+<div>
+    <label for="playback_rate">Playback rate:</label>
+    <select id="playback_rate" class="selectors" onchange="setPlaybackRate()">
+        <option value="0.5">0.5</option>
+        <option value="1.0">1.0</option>
+        <option value="1.5">1.5</option>
+        <option value="2.0" selected="selected">2.0</option>
+        <option value="4.0">4.0</option>
+    </select>
+</div><br/>
+
+<input type="button" value="Generate rollouts from reset" onclick="generateRolloutsAndUpdateVideos()"/>
+
+<p>Select preferred rollout by clicking or by using one of the number keys.</p>
+<p>'e' = indicate equal preference among all rollouts.</p>
+<p>'n' = continue with a random rollout.</p>
+
+<div id="videoFrames">
+</div>
+<div id="videos">
+</div>
+<div id="labels">
+</div>
+
+{% if hierarchical == true %}
+    <br/>
+    <label for="comparisonGraph">Comparison graph by rollout hash:</label>
+    <br/>
+    <img id="comparisonGraph"/>
+{% endif %}
+
+</body>
+</html>

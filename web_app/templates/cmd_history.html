@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body>
+
+<script>
+    var list;
+
+    function removeItemFromList(i) {
+        list.splice(i, 1);
+        storeList();
+        updateList();
+    }
+
+    function updateList() {
+        var $cmdList = $('#cmdList');
+        $cmdList.empty();
+        for (var i = 0; i < list.length; i++) {
+            let $div = $('<div></div>');
+            let $removeButton = $('<button>-</button>');
+            $removeButton.attr('onClick', 'removeItemFromList(' + i + ')');
+            $removeButton.css({"margin-right": "10px"});
+            let url = '';
+            let hostOverride = $('#hostInput').val();
+            if (hostOverride.length > 0) {
+                url += hostOverride + '/';
+            }
+            url += list[i];
+            let $link = $('<a target="iframe" href="' + url + '">' + url + '</a><br />');
+            $removeButton.appendTo($div);
+            $link.appendTo($div);
+            $div.appendTo($cmdList);
+        }
+    }
+
+    function storeList() {
+        localStorage.setItem('cmdList', JSON.stringify(list));
+    }
+
+    window.onload = function () {
+        list = JSON.parse(localStorage.getItem('cmdList')) || [];
+        list.sort();
+        updateList();
+
+        document.getElementById('cmdInput').onkeypress = function (e) {
+            if (e.key === 'Enter') {
+                var cmdInput = $('#cmdInput');
+                var cmd = cmdInput.val();
+                list.push(cmd);
+                list.sort();
+                storeList();
+                updateList();
+                cmdInput.val('');
+            }
+        }
+    }
+</script>
+
+<label for="hostInput">Host override:</label>
+<input type="text" id="hostInput" size="40"/>
+<input type="button" value="Update" onclick="updateList()"/>
+<br/><br/>
+
+<label for="cmdInput">Command:</label>
+<input type="text" id="cmdInput" size="40"/>
+<br/><br/>
+
+<div id="cmdList"></div>
+<br />
+<br />
+
+<iframe name="iframe"></iframe>
+
+</body>
+</html>

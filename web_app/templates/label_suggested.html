@@ -1,0 +1,97 @@
+<html>
+<body onload="init()">
+<script>
+    document.onkeydown = handleKeys;
+    epName = null;
+    frame_timestep = null;
+
+    {% include 'common.js' %}
+
+    function init() {
+        getNewImage(true);
+        updateLabelList();
+    }
+
+    function tag(tagType) {
+        var labelName = document.getElementById("label_select").value;
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "http://127.0.0.1:5000/tag", true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            epName: epName,
+            labelName: labelName,
+            tag: tagType,
+            frameIdx: frame_timestep
+        }));
+    }
+
+    function getNewImage(fresh) {
+        var suggestion_type_radios =
+            document.getElementsByName("suggestion_type");
+        if (suggestion_type_radios[0].checked) {
+            checked_radio = suggestion_type_radios[0]
+        }  else {
+            checked_radio = suggestion_type_radios[1]
+        }
+        suggestion_type = checked_radio.value;
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open(
+            "GET",
+            "http://127.0.0.1:5000/suggest_frame" +
+            "?mode=" + suggestion_type +
+            "&fresh=" + fresh,
+            false);
+        xmlHttp.send(null);
+        json = JSON.parse(xmlHttp.responseText);
+        epName = json[0];
+        im_url = json[1];
+        frame_timestep = json[2];
+        pred = json[3];
+        uncertainty = json[4];
+
+        var im = document.getElementById("image");
+        im.src = im_url;
+
+        var info = document.getElementById("info");
+        info.innerHTML =
+            "Episode " + epName +
+            ", frame " + frame_timestep.toString() +
+            ", prediction " + pred.toString() +
+            ", confidence " + uncertainty.toString();
+    }
+
+    function handleKeys(e) {
+        if (e.key === "1") {
+            tag('yes');
+            getNewImage(false);
+        } else if (e.key === "2") {
+            tag('no');
+            getNewImage(false);
+        } else if (e.key === "3") {
+            getNewImage(false);
+        }
+    }
+</script>
+<div>
+    <input type="radio" name="suggestion_type" value="least_confident" />
+    <label for="least_confident">Least confident</label>
+    <input type="radio" name="suggestion_type" value="most_confident_positive"
+           checked />
+    <label for="most_confident_positive">Most confident positive</label>
+</div>
+<br />
+<div>
+    <label for="label_select">Label:</label>
+    <select id="label_select">
+    </select>
+</div>
+<br />
+<button type="Button" onclick="getNewImage(true)">New suggestion</button>
+<p id="info"></p>
+<p>1 = 'yes', 2 = 'no', 3 = 'skip'</p>
+
+<img id="image" />
+
+</body>
+</html>

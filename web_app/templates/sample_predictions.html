@@ -1,0 +1,50 @@
+<html>
+<body onload="getNewImage()">
+<script type="text/javascript">
+    function getNewImage() {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("GET", "http://127.0.0.1:5000/sample_predictions?n=20&prediction=1",
+        false);
+        xmlHttp.send(null);
+        json = JSON.parse(xmlHttp.responseText);
+
+        var vid = document.getElementById("imgs");
+
+        var i;
+        for (i = 0; i < json.length; i++) {
+            var im_url = json[i][0];
+            var pred = json[i][1];
+            var uncertainty = json[i][2];
+            var label = json[i][3];
+            var validation = json[i][4];
+
+            var div = document.createElement("div");
+            div.classList.add('grid-item');
+
+            var img = document.createElement("img");
+            img.src = im_url;
+
+            var p = document.createElement("span");
+            p.style = 'display: block';
+            var info = 'Pred ' + pred.toString() + ', uncertainty ' + uncertainty.toString();
+            if (label != null) {
+                var val;
+                if (validation == true) {
+                    val = 'test';
+                } else {
+                    val = 'train';
+                }
+                info += '<br />Label ' + label.toString() + ' (' + val + ')';
+            }
+            p.innerHTML = info;
+
+            div.appendChild(img);
+            div.appendChild(p);
+
+            vid.appendChild(div);
+        }
+    }
+</script>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, 200px)" id="imgs" />
+</body>
+</html>
