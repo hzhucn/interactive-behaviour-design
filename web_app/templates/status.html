@@ -1,0 +1,35 @@
+<html>
+
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    </head>
+
+    <body>
+
+        <script>
+            window.onload = function() {
+                updateStatus();
+                setInterval(updateStatus, 1000);
+            }
+
+            function updateStatus() {
+                $.get('get_status', function(data) {
+                    var statusDict = JSON.parse(data);
+                    var $div = $('#statusText');
+                    $div.empty();
+                    for (var statusKey in statusDict) {
+                        var statusValue = statusDict[statusKey];
+                        var text = statusKey + ": " + statusValue;
+                        var p = $('<p>');
+                        p.text(text);
+                        p.appendTo($div);
+                    }
+                });
+            }
+        </script>
+
+        <div id="statusText"></div>
+
+    </body>
+
+</html>

@@ -1,0 +1,114 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body onload="init()">
+
+<script>
+    {% include 'common.js' %}
+
+    document.onkeydown = handleKeyDown;
+
+    let segmentHashes = [];
+
+    function init() {
+        updateVideos();
+    }
+
+    function updateVideos() {
+        $.get('/get_comparison', function (data) {
+            let segmentDict = JSON.parse(data);
+            let nVidsSent = Object.keys(segmentDict).length;
+
+            let $videos = $('#videos');
+            while ($('#videos video').length > nVidsSent) {
+                $('#videos video').last().remove();
+                $('#labels div').last().remove();
+            }
+            while ($('#videos video').length < nVidsSent) {
+                addVideo();
+                addLabel();
+            }
+
+            segmentHashes = [];
+            let i = 0;
+            for (let segmentHash in segmentDict) {
+                segmentHashes[i] = segmentHash;
+
+                let vid = $videos.children()[i];
+                let filename = segmentDict[segmentHash][1];
+                vid.src = '/get_segment_video?filename=' + filename;
+                vid.load();
+                vid.playbackRate = 2.0;
+
+                let label = $('#labels').children()[i];
+                label.innerHTML = segmentHash;
+
+                i++;
+            }
+        });
+    }
+
+    function addVideo() {
+        let $video = $('<video />', {
+            type: 'video/mp4',
+            width: '400px',
+            autoplay: true,
+            loop: true,
+            controls: true
+        });
+        $video.appendTo($('#videos'));
+        let $videoFrame = $('<video />', {
+            type: 'video/mp4',
+            width: '400px',
+            controls: false
+        });
+        $videoFrame.appendTo($('#videoFrames'));
+    }
+
+    function addLabel() {
+        let div = $('<div>');
+        div.css('width', '400px');
+        div.css('display', 'inline-block');
+        div.css('text-align', 'center');
+        div.appendTo($('#labels'));
+    }
+
+    function pauseVideos() {
+        let vids = $('#videos').children();
+        for (let i = 0; i < vids.length; i++) {
+            vids[i].pause();
+        }
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === 'e') {
+            pref = [0.5, 0.5];
+        } else if (e.key === 'n') {
+            pref = null;
+        } else if (e.key === '1') {
+            pref = [1, 0];
+        } else if (e.key === '2') {
+            pref = [0, 1];
+        } else {
+            return;
+        }
+        pauseVideos();
+        let d = {
+            'hash1': segmentHashes[0],
+            'hash2': segmentHashes[1],
+            'pref': JSON.stringify(pref)
+        };
+        $.post('/prefer_segment', d, function () {
+            updateVideos();
+        });
+    }
+</script>
+
+<div id="videos">
+</div>
+<div id="labels">
+</div>
+
+</body>
+</html>

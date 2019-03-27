@@ -1,0 +1,272 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body onload="init()">
+<script>
+
+    document.onkeydown = handleKeys;
+    document.onkeyup = handleKeyUp;
+    lastKeyTime = null;
+    seekMultiplier = 1.0;
+    episode_vid_names = [];
+    shiftHeld = false;
+
+    {% include 'common.js' %}
+
+    function handleKeyUp(e) {
+        resetSeekMultiplier();
+        if (e.key === 'Shift') {
+            shiftHeld = false;
+        }
+    }
+
+    function restoreSelectors() {
+        var selectorValues = JSON.parse(localStorage.getItem('selectorValues')) || {};
+        $.each(selectorValues, function (key, value) {
+            var el = $("#" + key);
+            if (el[0].type === 'checkbox') {
+                el.prop('checked', value);
+            } else {
+                el.prop('value', value);
+            }
+        });
+        showEpisode(true);
+    }
+
+    function saveSelectors() {
+        var selectorValues = {};
+        var $selectors = $(".selectors");
+        $selectors.each(function () {
+            if (this.type === "checkbox") {
+                selectorValues[this.id] = this.checked;
+            } else {
+                selectorValues[this.id] = this.value;
+            }
+        });
+        localStorage.setItem("selectorValues", JSON.stringify(selectorValues));
+    }
+
+    function init() {
+        updateEpisodeList();
+        updateLabelList();
+        restoreSelectors();
+        var $selectors = $(".selectors");
+        $selectors.on("change", saveSelectors);
+        setPlaybackRate();
+    }
+
+    function getEpisodeName() {
+        var episode_select = document.getElementById("episode_select");
+        epName = episode_select.options[episode_select.selectedIndex].value;
+        return epName;
+    }
+
+    function updateEpisodeList() {
+        var xhr = new XMLHttpRequest();
+        url = "/get_episode_list";
+        xhr.open("GET", url, false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(null);
+        episode_vid_names = JSON.parse(xhr.responseText);
+
+        let $episodeSelect = $('#episode_select');
+        let selectedIndex = $episodeSelect[0].selectedIndex;
+        $episodeSelect.empty();
+        $(episode_vid_names).each(function (i, v) {
+            $('#episode_select').append($('<option>', {value: v, html: v}));
+        });
+        $episodeSelect[0].selectedIndex = selectedIndex;
+    }
+
+    function showEpisode(cached_ok) {
+        var episode_select = document.getElementById("episode_select");
+        var predictions_checkbox = document.getElementById("predictions_checkbox");
+        var rewards_checkbox = document.getElementById("rewards_checkbox");
+        var n = episode_select.selectedIndex;
+        var vid = document.getElementById("episodeVideo");
+        vid.src = "/get_episode_vid?ep_n=" + episode_vid_names[n] + "&cached_ok=" + cached_ok;
+        if (predictions_checkbox.checked) {
+            vid.src += "&predictions";
+        }
+        if (rewards_checkbox.checked) {
+            vid.src += "&rewards";
+        }
+        setPlaybackRate();
+        saveSelectors();
+    }
+
+    function tag(label_value) {
+        var vid = document.getElementById("episodeVideo");
+        var labelName = document.getElementById("label_select").value;
+        if (labelName.length === 0) {
+            alert("No label selected");
+            return;
+        }
+        var epName = getEpisodeName();
+        var videoTime = vid.currentTime;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "tag", true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            epName: epName,
+            labelName: labelName,
+            tag: label_value,
+            videoTime: videoTime
+        }));
+    }
+
+    function resetSeekMultiplier() {
+        seekMultiplier = 1.0;
+    }
+
+    function handleKeys(e) {
+        if ($('#frame_skip').is(':focus')) {
+            return;
+        }
+
+        var fps = 30.0;
+        var frameInterval = 1 / fps;
+
+        curTime = new Date().getTime();
+        if (lastKeyTime != null) {
+            intervalMs = curTime - lastKeyTime;
+            if (intervalMs < 150) {
+                return;
+            }
+        }
+        lastKeyTime = curTime;
+
+        seekAmount = frameInterval * seekMultiplier;
+        if (shiftHeld) {
+            seekAmount *= 10;
+        }
+        seekMultiplier = Math.min(seekMultiplier * 2.0, 16.0);
+
+        var vid = document.getElementById("episodeVideo");
+
+        if (vid.currentTime === 0) {
+            vid.currentTime += 0.0001;
+        }
+
+        n = parseInt($("#frame_skip")[0].value);
+
+        if (e.key === "ArrowLeft") {
+            if (!vid.paused) {
+                vid.pause();
+                vid.currentTime -= 17 * seekAmount;
+            }
+            vid.currentTime -= seekAmount;
+        } else if (e.key === "ArrowRight") {
+            vid.pause()
+            vid.currentTime += seekAmount;
+        } else if (e.key === "1") {
+            for (var i = 0; i < n; i++) {
+                tag('yes');
+                vid.currentTime += frameInterval;
+            }
+        } else if (e.key === "2") {
+            for (var i = 0; i < n; i++) {
+                tag('no');
+                vid.currentTime += frameInterval;
+            }
+        } else if (e.key === " ") {
+            if (vid.paused) {
+                vid.play();
+            } else {
+                vid.pause();
+            }
+        } else if (e.key === "n") {
+            updateEpisodeList();
+            nextEpisode();
+        } else if (e.key === "r") {
+            vid.currentTime = 0;
+        } else if (e.key === 'Shift') {
+            shiftHeld = true;
+        }
+
+    }
+
+    function setPlaybackRate() {
+        var vid = document.getElementById("episodeVideo");
+        var playbackSelect = document.getElementById("playback_rate");
+        var idx = playbackSelect.selectedIndex;
+        rate = parseFloat(playbackSelect.options[idx].value);
+        vid.playbackRate = rate;
+    }
+
+    function setFrameText() {
+        var frameText = $("#frameText")[0];
+        var vid = $("#episodeVideo")[0];
+        frame = Math.round(parseFloat(vid.currentTime) * 30.0);
+        frameText.innerHTML = "Frame: " + frame;
+    }
+
+    function nextEpisode() {
+        var s = $("#episode_select")[0];
+        if (s.selectedIndex < s.length - 1) {
+            s.selectedIndex++;
+            showEpisode(true);
+        }
+    }
+</script>
+
+
+<div>
+    <label for="episode_select">Episode:</label>
+    <select id="episode_select" class="selectors" onchange="showEpisode(true)">
+    </select>
+</div>
+
+<input type="button" onclick="nextEpisode()" value="Next episode">
+<input type="button" onclick="showEpisode(false)" value="Refresh video">
+
+<div>
+    <label for="label_select">Label:</label>
+    <select id="label_select" class="selectors">
+    </select>
+</div>
+
+<div>
+    <label for="predictions_checkbox">Predictions:</label>
+    <input type="checkbox" id="predictions_checkbox"
+           class="selectors" onchange="showEpisode(true)"/>
+</div>
+
+<div>
+    <label for="reward_checkbox">Rewards:</label>
+    <input type="checkbox" id="rewards_checkbox"
+           class="selectors" onchange="showEpisode(true)"/>
+</div>
+
+<div>
+    <label for="frame_skip">Frame skip:</label>
+    <input type="text" id="frame_skip" value="10">
+</div>
+
+<br/>
+<p>1 = positive, 2 = negative</p>
+<br/>
+<video width="500 px" controls id="episodeVideo" onseeked="setFrameText()">
+    <source type="video/mp4">
+</video>
+<br/>
+
+<p id="frameText"></p>
+
+<br/>
+<br/>
+
+<div>
+    <label for="playback_rate">Playback rate:</label>
+    <select id="playback_rate" class="selectors" onchange="setPlaybackRate()">
+        <option value="1.0">1.0</option>
+        <option value="1.5">1.5</option>
+        <option value="2.0" selected="selected">2.0</option>
+        <option value="4.0">4.0</option>
+    </select>
+</div>
+
+</body>
+</html>
