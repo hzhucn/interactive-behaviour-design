@@ -293,6 +293,7 @@ class TD3Policy(Policy):
         self.logger.log_list_stats(f'policy_{self.name}/loss_l2', loss_l2_l)
         self.cycle_n += 1
         self.logger.logkv(f'policy_{self.name}/cycle', self.cycle_n)
+        self.logger.logkv(f'policy_{self.name}/replay_buffer_demo_ptr', self.demonstrations_buffer.ptr)
         if self.cycle_n % self.cycles_per_epoch == 0:
             self.epoch_n += 1
             self.logger.logkv(f'policy_{self.name}/epoch', self.epoch_n)
@@ -398,6 +399,7 @@ class TD3Policy(Policy):
                 self.logger.logkv(f'policy_{self.name}/noise_mean_{n}', self.noise_stats.mean[n])
                 self.logger.logkv(f'policy_{self.name}/noise_std_{n}', self.noise_stats.var[n])
             self.logger.logkv(f'policy_{self.name}/replay_buffer_ptr', self.replay_buffer.ptr)
+            self.logger.logkv(f'policy_{self.name}/replay_buffer_demo_ptr', self.demonstrations_buffer.ptr)
             self.logger.logkv(f'policy_{self.name}/cycle', self.cycle_n)
             n_total_steps = self.n_serial_steps * self.n_envs
             self.logger.logkv(f'policy_{self.name}/n_total_steps', n_total_steps)
