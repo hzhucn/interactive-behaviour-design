@@ -23,7 +23,7 @@ def set_timeouts(env):
 
     if isinstance(env.unwrapped, FetchEnv):
         if 'Repeat1' in env.unwrapped.spec.id:
-            max_seconds = 10
+            max_seconds = 15
         elif 'Repeat3' in env.unwrapped.spec.id:
             max_seconds = 5
         else:
