@@ -5,11 +5,12 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--seeds', default='0')
 parser.add_argument('--test', action='store_true')
-parser.add_argument('--no_render_demonstrations', action='store_true')
+parser.add_argument('--quick', action='store_true')
 args = parser.parse_args()
 
 seeds = list(map(int, args.seeds.split(',')))
 if args.test:
+    assert not args.quick
     test_args = '--n_initial_prefs 0 --n_initial_demos 0 --pretrain_reward_predictor_seconds 0 --min_label_interval_seconds 0'
 else:
     test_args = ''
@@ -49,15 +50,18 @@ for seed in seeds:
             rollout_length_seconds = 1.0
 
         extra_args = f"--rollout_length_seconds {rollout_length_seconds}"
-        if args.no_render_demonstrations:
+        if args.quick:
+            quick_args = ' --min_label_interval_seconds 0'
             extra_args += ' --no_render_demonstrations'
+        else:
+            quick_args = ''
 
         # DRLHP
         print("python3 scripts/train/auto_train_prefs.py "
-              f"{env_id} reward_only drlhp {run_name}-drlhp --seed {seed} --disable_redo --extra_args ' {extra_args}' {test_args}")
+              f"{env_id} reward_only drlhp {run_name}-drlhp --seed {seed} --disable_redo --extra_args ' {extra_args}' {test_args} {quick_args}")
         # SDRLHP
         print("python3 scripts/train/auto_train_prefs.py "
-              f"{env_id} reward_only demonstrations {run_name}-sdrlhp --seed {seed} --disable_redo --extra_args ' {extra_args}' {test_args}")
+              f"{env_id} reward_only demonstrations {run_name}-sdrlhp --seed {seed} --disable_redo --extra_args ' {extra_args}' {test_args} {quick_args}")
 
         if 'lunarlander' in env_shortname or 'fetch' in env_shortname:
             redo = '--disable_redo'
@@ -65,7 +69,7 @@ for seed in seeds:
             redo = ''
         # Behavioral cloning
         print("python3 scripts/train/auto_train_prefs.py "
-              f"{env_id} bc_only demonstrations {run_name}-bc --seed {seed} --n_envs 1 {redo} --extra_args ' {extra_args}' {test_args}")
+              f"{env_id} bc_only demonstrations {run_name}-bc --seed {seed} --n_envs 1 {redo} --extra_args ' {extra_args}' {test_args} {quick_args}")
         # SDRLHP + behavioral cloning
         print("python3 scripts/train/auto_train_prefs.py "
-              f"{env_id} reward_plus_bc demonstrations {run_name}-sdrlhp-bc --seed {seed} {redo} --extra_args ' {extra_args}' {test_args}")
+              f"{env_id} reward_plus_bc demonstrations {run_name}-sdrlhp-bc --seed {seed} {redo} --extra_args ' {extra_args}' {test_args} {quick_args}")
