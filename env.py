@@ -67,7 +67,7 @@ def make_env(env_id, num_env, seed, experience_dir, episode_obs_queue: multiproc
             env = StateBoundaryWrapper(env)
 
             if rank == 0:
-                env = LogEpisodeStats(env, '_train', experience_dir)
+                env = LogEpisodeStats(env, suffix='_train', log_dir=experience_dir)
                 env = Monitor(env, experience_dir, lambda n: n and n % render_every_nth_episode == 0)
 
                 # We save frames for classifier labelling and segments for DRLHP from the training environment
