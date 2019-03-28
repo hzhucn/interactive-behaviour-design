@@ -68,14 +68,14 @@ class Oracle:
         gripper_to_block = obs[:3]
         block_to_target = obs[3:6]
         gripper_width = obs[6]
-        if (np.linalg.norm(gripper_to_block) > 0.03 and
-                np.linalg.norm(block_to_target) > 0.1):  # Don't open grippers if blocking is slipping near target
+        if np.linalg.norm(gripper_to_block) > 0.03 and not self.gripping:
             di = np.argmax(np.abs(gripper_to_block))
             action = np.array([0., 0., 0., 1.])
             action[di] = 0.15 * np.sign(gripper_to_block[di])
         elif gripper_width > 0.05:
             action = np.array([0, 0, 0, -1])
         else:
+            self.gripping = True
             di = np.argmax(np.abs(block_to_target))
             action = np.array([0., 0., 0., -1.])
             action[di] = 0.15 * np.sign(block_to_target[di])
