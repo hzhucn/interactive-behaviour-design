@@ -153,6 +153,7 @@ def detect_metrics(env_name):
         metrics.append(M('env/reward_sum_post_wrappers', 'Reward', 0.95, 0.9))
         metrics.append(M('env/gripper_to_block_cumulative_distance', 'Distance from gripper to block', 0.99, 0.95))
         metrics.append(M('env/block_to_target_cumulative_distance', 'Distance from block to target', 0.99, 0.99))
+        metrics.append(M('env/success_rate', 'Success rate', 0.95, 0.95))
     return metrics
 
 
