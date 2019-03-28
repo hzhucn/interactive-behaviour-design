@@ -134,7 +134,7 @@ class TestTD3(unittest.TestCase):
         print("Logging to", tmp_dir)
         train_env = CustomSubprocVecEnv(env_fns=[lambda env_n=env_n: self.env_fn(env_id=env_id, seed=env_n)
                                                  for env_n in range(n_envs)])
-        test_env = self.env_fn(env_id=env_id, seed=(n_envs + 1))
+        test_env = self.env_fn(env_id=env_id, seed=n_envs)
         # test_env = Monitor(test_env, tmp_dir, video_callable=lambda n: True)
 
         policy = TD3Policy('dummyname',
@@ -147,7 +147,7 @@ class TestTD3(unittest.TestCase):
         policy.init_logger(tmp_dir)
         policy.set_training_env(train_env)
         policy.test_env = test_env
-        last_epoch_n = 1
+        last_epoch_n = 0
         test_return = None
         while policy.epoch_n <= n_epochs:
             policy.train()
@@ -157,6 +157,9 @@ class TestTD3(unittest.TestCase):
                 test_return = np.mean(policy.test_agent(n=5))
                 print("  Average test return:", test_return)
                 last_epoch_n = policy.epoch_n
+                with policy.graph.as_default():
+                    var_sum = policy.sess.run(tf.reduce_sum([tf.reduce_sum(v) for v in tf.trainable_variables()]))
+                    print("  Policy hash:", var_sum)
             sys.stdout.flush()
         train_env.close()
         test_env.close()
