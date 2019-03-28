@@ -221,7 +221,8 @@ class TestTD3(unittest.TestCase):
                              env_id,
                              obs_space,
                              act_space,
-                             n_envs=1)
+                             n_envs=1,
+                             hidden_sizes=(256, 256, 256, 256))
 
         policy = make_policy()
 
