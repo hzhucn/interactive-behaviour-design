@@ -53,7 +53,7 @@ class LunarLanderStatsWrapper(SaveEpisodeStats):
                 self.last_stats['landing_rate'] = self.landings.count(True) / len(self.landings)
                 self.last_stats['landing_between_flags_rate'] = self.landings_between_flags.count(True) / len(
                     self.landings_between_flags)
-                self.last_stats['crashes'] = self.crashes.count(True) / len(self.crashes)
+                self.last_stats['crash_rate'] = self.crashes.count(True) / len(self.crashes)
                 self.last_stats['successful_landing_rate'] = self.successful_landings.count(True) / len(
                     self.successful_landings)
 

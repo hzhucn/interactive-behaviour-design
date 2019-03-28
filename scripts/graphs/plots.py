@@ -143,7 +143,7 @@ def detect_metrics(env_name):
     metrics = []
     if 'Lunar Lander' in env_name:
         metrics.append(M('env/reward_sum', 'Reward', 0.99, 0.99))
-        metrics.append(M('env/crashes', 'Crash rate', 0.995, 0.99))
+        metrics.append(M('env/crash_rate', 'Crash rate', 0.995, 0.99))
         metrics.append(M('env/successful_landing_rate', 'Successful landing rate', 0.995, 0.99))
     if 'Seaquest' in env_name:
         metrics.append(M('env/reward_sum', 'Reward', 0.9, 0.9))
