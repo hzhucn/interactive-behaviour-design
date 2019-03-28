@@ -45,10 +45,10 @@ for seed in seeds:
         extra_args = f"--rollout_length_seconds {rollout_length_seconds}"
 
         # DRLHP
-        print("python3 scripts/auto_train_prefs.py "
+        print("python3 scripts/train/auto_train_prefs.py "
               f"{env_id} reward_only drlhp {run_name}-drlhp --seed {seed} --disable_redo --extra_args ' {extra_args}' {test_args}")
         # SDRLHP
-        print("python3 scripts/auto_train_prefs.py "
+        print("python3 scripts/train/auto_train_prefs.py "
               f"{env_id} reward_only demonstrations {run_name}-sdrlhp --seed {seed} --disable_redo --extra_args ' {extra_args}' {test_args}")
 
         if 'lunarlander' in env_shortname or 'fetch' in env_shortname:
@@ -56,8 +56,8 @@ for seed in seeds:
         else:
             redo = ''
         # Behavioral cloning
-        print("python3 scripts/auto_train_prefs.py "
+        print("python3 scripts/train/auto_train_prefs.py "
               f"{env_id} bc_only demonstrations {run_name}-bc --seed {seed} {redo} --extra_args ' {extra_args}' {test_args}")
         # SDRLHP + behavioral cloning
-        print("python3 scripts/auto_train_prefs.py "
+        print("python3 scripts/train/auto_train_prefs.py "
               f"{env_id} reward_plus_bc demonstrations {run_name}-sdrlhp-bc --seed {seed} {redo} --extra_args ' {extra_args}' {test_args}")
