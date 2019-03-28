@@ -9,6 +9,7 @@ from typing import Dict
 
 import numpy as np
 from cloudpickle import cloudpickle
+from gym.utils import atomic_write
 from gym.wrappers import TimeLimit
 from tensorflow.python.framework.errors_impl import NotFoundError
 
@@ -233,7 +234,10 @@ class PolicyRollouter:
     def save_metadata(self, rollout_hashes, group_serial):
         filename = 'metadata_' + group_serial + '.json'
         path = os.path.join(self.save_dir, filename)
-        with open(path, 'w') as f:
+
+        # This needs to be done atomically because the web app thread will constantly be checking for new
+        # metadata files and will be upset if it finds an empty one
+        with atomic_write.atomic_write(path) as f:
             json.dump(rollout_hashes, f)
         print(f"Wrote rollout group '{filename}'")
 
