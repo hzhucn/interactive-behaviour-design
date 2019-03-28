@@ -137,11 +137,16 @@ class TestTD3(unittest.TestCase):
         test_env = self.env_fn(env_id=env_id, seed=n_envs)
         # test_env = Monitor(test_env, tmp_dir, video_callable=lambda n: True)
 
+        # Increase chance of TensorFlow being deterministic
+        # https://stackoverflow.com/a/39938524/7832197
+        config = tf.ConfigProto(tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1))
+        config.gpu_options.allow_growth = True
         policy = TD3Policy('dummyname',
                            env_id,
                            train_env.observation_space,
                            train_env.action_space,
                            n_envs=n_envs, train_mode=PolicyTrainMode.R_ONLY,
+                           sess_config=config,
                            **hyperparams)
 
         policy.init_logger(tmp_dir)

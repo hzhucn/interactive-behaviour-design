@@ -80,7 +80,8 @@ class TD3Policy(Policy):
                  noise_type='ou', noise_sigma=0.2,
                  n_initial_episodes=100, replay_size=int(1e6),
                  l2_coef=1e-4, train_mode=PolicyTrainMode.R_ONLY,
-                 hidden_sizes=(256, 256, 256, 256)):
+                 hidden_sizes=(256, 256, 256, 256),
+                 sess_config=None):
         assert policy_delay < batches_per_cycle
         assert noise_type in ['gaussian', 'ou']
         Policy.__init__(self, name, env_id, obs_space, ac_space, n_envs, seed)
@@ -184,8 +185,9 @@ class TD3Policy(Policy):
             target_init = tf.group([tf.assign(v_targ, v_main)
                                     for v_main, v_targ in zip(get_vars('main'), get_vars('target'))])
 
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
+            if sess_config is None:
+                config = tf.ConfigProto()
+                config.gpu_options.allow_growth = True
             sess = tf.Session(config=config, graph=graph)
 
             sess.run(tf.global_variables_initializer())
