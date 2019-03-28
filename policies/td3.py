@@ -186,9 +186,9 @@ class TD3Policy(Policy):
                                     for v_main, v_targ in zip(get_vars('main'), get_vars('target'))])
 
             if sess_config is None:
-                config = tf.ConfigProto()
-                config.gpu_options.allow_growth = True
-            sess = tf.Session(config=config, graph=graph)
+                sess_config = tf.ConfigProto()
+                sess_config.gpu_options.allow_growth = True
+            sess = tf.Session(config=sess_config, graph=graph)
 
             sess.run(tf.global_variables_initializer())
             sess.run(target_init)

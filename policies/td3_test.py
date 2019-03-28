@@ -139,7 +139,7 @@ class TestTD3(unittest.TestCase):
 
         # Increase chance of TensorFlow being deterministic
         # https://stackoverflow.com/a/39938524/7832197
-        config = tf.ConfigProto(tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1))
+        config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
         config.gpu_options.allow_growth = True
         policy = TD3Policy('dummyname',
                            env_id,
