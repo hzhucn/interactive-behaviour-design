@@ -5,6 +5,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--seeds', default='0')
 parser.add_argument('--test', action='store_true')
+parser.add_argument('--no_render_demonstrations', action='store_true')
 args = parser.parse_args()
 
 seeds = list(map(int, args.seeds.split(',')))
@@ -47,7 +48,9 @@ for seed in seeds:
         else:
             rollout_length_seconds = 1.0
 
-        extra_args = f"--rollout_length_seconds {rollout_length_seconds} --no_render_demonstrations"
+        extra_args = f"--rollout_length_seconds {rollout_length_seconds}"
+        if args.no_render_demonstrations:
+            extra_args += ' --no_render_demonstrations'
 
         # DRLHP
         print("python3 scripts/train/auto_train_prefs.py "
