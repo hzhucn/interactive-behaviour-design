@@ -200,6 +200,7 @@ class FetchStatsWrapper(SaveEpisodeStats):
                 self.successes.append(True)
             else:
                 self.successes.append(False)
+            self.stats['success'] = float(self.successes[-1])
             if len(self.successes) == self.successes.maxlen:
                 self.stats['success_rate'] = self.successes.count(True) / len(self.successes)
 
