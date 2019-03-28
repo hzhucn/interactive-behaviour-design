@@ -21,7 +21,7 @@ rl_envs = [
 
 prefs_envs = [
     ('seaquest', 'SeaquestDeepMindDense-v0'),
-    ('fetchpp', 'FetchPickAndPlace-Repeat1-ContGripper-WithGripObs-5InitialBlockPos-FixedGoal-Delta-GripperBonuses-v0'),
+    ('fetchpp', 'FetchPickAndPlace-Repeat1-BinaryGripper-WithGripObs-5InitialBlockPos-FixedGoal-Delta-GripperBonuses-v0'),
     ('lunarlander', 'LunarLanderStatefulStats-v0'),
 ]
 
