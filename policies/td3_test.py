@@ -60,24 +60,25 @@ class Oracle:
         return action
 
     def get_action_zigzag(self, obs):
-        if self.step_n % 5 != 0:
+        if self.step_n % 7 != 0:
             self.step_n += 1
             return self.last_action
 
+        assert obs.shape == (7,)
         gripper_to_block = obs[:3]
         block_to_target = obs[3:6]
         gripper_width = obs[6]
-        if np.linalg.norm(gripper_to_block) > 0.02 and not self.gripping:
+        if (np.linalg.norm(gripper_to_block) > 0.03 and
+                np.linalg.norm(block_to_target) > 0.1):  # Don't open grippers if blocking is slipping near target
             di = np.argmax(np.abs(gripper_to_block))
             action = np.array([0., 0., 0., 1.])
-            action[di] = 0.3 * np.sign(gripper_to_block[di])
-        elif gripper_width > 0.055:
-            action = [0., 0., 0., -0.02]
+            action[di] = 0.15 * np.sign(gripper_to_block[di])
+        elif gripper_width > 0.05:
+            action = np.array([0, 0, 0, -1])
         else:
-            self.gripping = True
             di = np.argmax(np.abs(block_to_target))
             action = np.array([0., 0., 0., -1.])
-            action[di] = 0.3 * np.sign(block_to_target[di])
+            action[di] = 0.15 * np.sign(block_to_target[di])
 
         self.last_action = action
         self.step_n += 1
