@@ -262,11 +262,11 @@ class FixedGoal(Wrapper):
 
 class FixedBlockInitialPositions(Wrapper):
     all_initial_block_positions = [
-        np.array([1.46192226, 0.9513729]),
-        np.array([1.18499211, 0.94554907]),
-        np.array([1.15782761, 0.45436904]),
-        np.array([1.4359836, 0.50284814]),
-        np.array([1.34399605, 0.69795044])
+        np.array([1.42, 0.84]),  # front right
+        np.array([1.24, 0.90]),  # back right
+        np.array([1.24, 0.57]),  # back left
+        np.array([1.40, 0.60]),  # front left
+        np.array([1.34, 0.70])   # middle
     ]
 
     def __init__(self, env, n_initial_block_positions):
