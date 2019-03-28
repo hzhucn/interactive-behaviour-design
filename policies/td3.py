@@ -282,7 +282,6 @@ class TD3Policy(Policy):
     def train_bc(self):
         loss_bc_pi_l, loss_l2_l = [], []
         for _ in range(self.batches_per_cycle):
-            self.logger.logkv(f'policy_{self.name}/seen_demonstrations', len(self.seen_demonstrations))
             bc_batch = self.demonstrations_buffer.sample_batch(self.batch_size)
             feed_dict = {
                 self.bc_x_ph: bc_batch['obses'], self.bc_a_ph: bc_batch['acts']
