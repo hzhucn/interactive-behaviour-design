@@ -66,6 +66,9 @@ class DemonstrationsBuffer:
             self.size = min(self.size + 1, self.max_size)
 
     def sample_batch(self, batch_size=32):
+        while self.size == 0:
+            print("Warning: demonstrations buffer empty; waiting...")
+            time.sleep(1)
         with self.lock:
             idxs = np.random.randint(0, self.size, size=batch_size)
             return dict(obses=self.obses_buf[idxs],
@@ -295,7 +298,6 @@ class TD3Policy(Policy):
         self.logger.log_list_stats(f'policy_{self.name}/loss_l2', loss_l2_l)
         self.cycle_n += 1
         self.logger.logkv(f'policy_{self.name}/cycle', self.cycle_n)
-        self.logger.logkv(f'policy_{self.name}/replay_buffer_demo_ptr', self.demonstrations_buffer.ptr)
         if self.cycle_n % self.cycles_per_epoch == 0:
             self.epoch_n += 1
             self.logger.logkv(f'policy_{self.name}/epoch', self.epoch_n)
@@ -502,5 +504,6 @@ class TD3Policy(Policy):
                     for o, a in zip(d.obses, d.actions):
                         self.demonstrations_buffer.store(obs=o, act=a)
                     self.seen_demonstrations.add(demonstration_hash)
+                self.logger.logkv(f'policy_{self.name}/replay_buffer_demo_ptr', self.demonstrations_buffer.ptr)
                 time.sleep(1)
         Thread(target=f).start()
