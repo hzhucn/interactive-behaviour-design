@@ -43,7 +43,7 @@ def demonstrate():
 
 
 def get_metadatas():
-    return [f for f in os.listdir(_demonstration_rollouts_dir) if 'metadata' in f]
+    return [f for f in os.listdir(_demonstration_rollouts_dir) if re.match(r'^metadata.*\.json$', f)]
 
 
 @demonstrations_app.route('/generate_rollouts', methods=['GET'])
