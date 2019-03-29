@@ -38,12 +38,9 @@ for seed in seeds:
             run_name += '-test'
 
         if 'Fetch' in env_id:
-            if 'Repeat3' in env_id:
-                rollout_length_seconds = 0.15
-            elif 'Repeat1' in env_id:
-                rollout_length_seconds = 0.5
-            else:
-                raise Exception()
+            # The speed of the Fetch subpolicies is set assuming Repeat1
+            assert 'Repeat1' in env_id
+            rollout_length_seconds = 0.15
         else:
             rollout_length_seconds = 1.0
 
