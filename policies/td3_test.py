@@ -135,7 +135,7 @@ class TestTD3(unittest.TestCase):
     spinningup_hyperparams = dict(
         rollouts_per_worker=1, hidden_sizes=(300,), batch_size=100, cycles_per_epoch=5, n_initial_episodes=10,
         batches_per_cycle=1000, l2_coef=0.0, noise_type='gaussian',
-        polyak=0.9995,  # non-default but hopefully more stable
+        polyak=0.995,  # non-default but hopefully more stable
     )
 
     fetch_hyperparams = dict()
@@ -145,7 +145,7 @@ class TestTD3(unittest.TestCase):
         self.assertGreater(test_ret, 2000)
 
     def test_cheetah_parallel(self):
-        test_ret = self.run_td3_rl('HalfCheetah-v2', n_envs=10, n_epochs=5, hyperparams=self.spinningup_hyperparams)
+        test_ret = self.run_td3_rl('HalfCheetah-v2', n_envs=10, n_epochs=10, hyperparams=self.spinningup_hyperparams)
         self.assertGreater(test_ret, 1500)
 
     def test_reach_single(self):
