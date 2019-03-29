@@ -49,6 +49,7 @@ def enumerate_envs(register=False):
     slow_grippers = [('SlowGripper', True), ('FastGripper', False)]
     vanilla_rls = [('VanillaRL', True), ('NoVanillaRL', False)]
     full_obss = [('FullObs', True), ('PartialObs', False)]
+    modes = [('Delta', 'delta2'), ('NonDelta', 'nondelta')]
 
     env_ids = []
     for s1, repeat in repeat_ns:
@@ -60,25 +61,26 @@ def enumerate_envs(register=False):
                                 for s8, slow_gripper in slow_grippers:
                                     for s9, vanilla_rl in vanilla_rls:
                                         for s10, full_obs in full_obss:
-                                            env_id = f'FetchPickAndPlace-{s1}-{s2}-{s4}-{s5}-{s6}-{s7}-{s8}-{s9}-{s10}-v0'
-                                            env_ids.append(env_id)
-                                            if register:
-                                                from gym.envs import register as gym_register
-                                                entry_fn = lambda locals=dict(locals()): \
-                                                    make_env(reward_mode='delta2',
-                                                             early_termination=locals['early_termination'],
-                                                             grip_open_bonus=locals['gripper_bonus'],
-                                                             grip_close_bonus=locals['gripper_bonus'],
-                                                             binary_gripper=locals['binary_gripper'],
-                                                             repeat_n=locals['repeat'],
-                                                             n_initial_block_positions=locals['n_initial_block_positions'],
-                                                             fixed_goal=locals['fixed_goal'],
-                                                             slow_gripper=locals['slow_gripper'],
-                                                             vanilla_rl=locals['vanilla_rl'],
-                                                             full_obs=locals['full_obs'])
-                                                gym_register(env_id,
-                                                             entry_point=entry_fn,
-                                                             max_episode_steps=250)
+                                            for s11, mode in modes:
+                                                env_id = f'FetchPickAndPlace-{s1}-{s2}-{s4}-{s5}-{s6}-{s7}-{s8}-{s9}-{s10}-{s11}-v0'
+                                                env_ids.append(env_id)
+                                                if register:
+                                                    from gym.envs import register as gym_register
+                                                    entry_fn = lambda locals=dict(locals()): \
+                                                        make_env(reward_mode=locals['mode'],
+                                                                 early_termination=locals['early_termination'],
+                                                                 grip_open_bonus=locals['gripper_bonus'],
+                                                                 grip_close_bonus=locals['gripper_bonus'],
+                                                                 binary_gripper=locals['binary_gripper'],
+                                                                 repeat_n=locals['repeat'],
+                                                                 n_initial_block_positions=locals['n_initial_block_positions'],
+                                                                 fixed_goal=locals['fixed_goal'],
+                                                                 slow_gripper=locals['slow_gripper'],
+                                                                 vanilla_rl=locals['vanilla_rl'],
+                                                                 full_obs=locals['full_obs'])
+                                                    gym_register(env_id,
+                                                                 entry_point=entry_fn,
+                                                                 max_episode_steps=250)
     return env_ids
 
 
