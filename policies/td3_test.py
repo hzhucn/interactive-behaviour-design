@@ -146,7 +146,7 @@ class TestTD3(unittest.TestCase):
 
     def test_cheetah_parallel(self):
         test_ret = self.run_td3_rl('HalfCheetah-v2', n_envs=10, n_epochs=10, hyperparams=self.spinningup_hyperparams)
-        self.assertGreater(test_ret, 1500)
+        self.assertGreater(test_ret, 2500)
 
     def test_reach_single(self):
         test_ret = self.run_td3_rl('FetchReachDense-v1', n_envs=1, n_epochs=5, hyperparams=self.fetch_hyperparams)
