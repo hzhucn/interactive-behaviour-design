@@ -236,6 +236,7 @@ def set_env_state(env, state):
     elif isinstance(env.unwrapped, (FetchEnv, RobotEnv)):
         env.unwrapped.goal = state[0]
         env.unwrapped.sim.set_state(state[1])
+        env.unwrapped.sim.forward()
     elif isinstance(env.unwrapped, LunarLander):
         # Handled by pickling
         pass
