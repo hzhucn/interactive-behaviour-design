@@ -140,7 +140,7 @@ class TestTD3(unittest.TestCase):
 
     fetch_hyperparams = dict()
 
-    def test_cheetah_single(self):
+    def _test_cheetah_single(self):
         test_ret = self.run_td3_rl('HalfCheetah-v2', n_envs=1, n_epochs=10, hyperparams=self.spinningup_hyperparams)
         self.assertGreater(test_ret, 2000)
 
@@ -148,7 +148,7 @@ class TestTD3(unittest.TestCase):
         test_ret = self.run_td3_rl('HalfCheetah-v2', n_envs=10, n_epochs=10, hyperparams=self.spinningup_hyperparams)
         self.assertGreater(test_ret, 2500)
 
-    def test_reach_single(self):
+    def _test_reach_single(self):
         test_ret = self.run_td3_rl('FetchReachDense-v1', n_envs=1, n_epochs=5, hyperparams=self.fetch_hyperparams)
         self.assertGreater(test_ret, -1.0)
 
@@ -198,7 +198,7 @@ class TestTD3(unittest.TestCase):
 
         return test_return
 
-    def test_pickplace_smooth_demonstrations(self):
+    def _test_pickplace_smooth_demonstrations(self):
         oracle = Oracle('smooth')
         self.run_td3_bc(oracle)
 
