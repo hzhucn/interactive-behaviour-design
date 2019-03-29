@@ -245,6 +245,7 @@ class FetchStatsWrapper(SaveEpisodeStats):
                 self.successes.append(True)
             else:
                 self.successes.append(False)
+            self.stats['success'] = float(self.successes[-1])
             if len(self.successes) == self.successes.maxlen:
                 self.stats['success_rate'] = self.successes.count(True) / len(self.successes)
 
@@ -277,7 +278,7 @@ class FetchStatsWrapper(SaveEpisodeStats):
         grippers_closed = np.sum(obs_by_name['gripper_state']) < 0.05
         gripping_block = aligned_with_block and grippers_closed
         self.gripping_proportion.update(float(gripping_block))
-        self.stats['ep_frac_gripping_block']  = self.gripping_proportion.v
+        self.stats['ep_frac_gripping_block'] = self.gripping_proportion.v
 
         return obs, reward, done, info
 
