@@ -7,7 +7,6 @@ import random
 import re
 import shutil
 import time
-import queue
 from threading import Thread
 from typing import Dict
 
@@ -15,11 +14,12 @@ import easy_tf_log
 from flask import request, render_template, send_from_directory, Blueprint
 
 from rollouts import CompressedRollout
+from utils import concatenate_and_write_videos_to
 from web_app import web_globals
 from web_app.utils import nocache, add_pref
 from web_app.web_globals import _demonstration_rollouts, experience_dir, _policies, \
     _policy_rollouter, _demonstration_rollouts_dir, _reset_state_cache
-from utils import concatenate_and_write_videos_to
+from wrappers.util_wrappers import LogEpisodeStats
 
 """
 Bugs:
@@ -35,6 +35,7 @@ n_demonstrations_given = multiprocessing.Value('i', 0)
 trajectory_for_group_dict = {}
 logger = easy_tf_log.Logger()
 logger.set_log_dir(_demonstration_rollouts_dir)
+episode_stats_logger = None
 
 
 @demonstrations_app.route('/demonstrate', methods=['GET'])
@@ -94,6 +95,8 @@ def get_rollouts():
 
 def process_choice_and_generate_new_rollouts(rollouts: Dict[str, CompressedRollout],
                                              chosen_rollout_hash_str, trajectory_serial, policy_names, softmax_temp):
+    global episode_stats_logger
+
     if chosen_rollout_hash_str != 'equal' and rollouts[chosen_rollout_hash_str].generating_policy == 'redo':
         continue_with_rollout = rollouts[chosen_rollout_hash_str]
         force_reset = False
@@ -132,6 +135,15 @@ def process_choice_and_generate_new_rollouts(rollouts: Dict[str, CompressedRollo
             force_reset = False
 
         if force_reset or continue_with_rollout.final_env_state.done:
+            env = continue_with_rollout.final_env_state.env
+            if episode_stats_logger is None:
+                episode_stats_logger = LogEpisodeStats(env,
+                                                       os.path.join(_demonstration_rollouts_dir, 'demo_env'),
+                                                       suffix='_demo')
+            else:
+                episode_stats_logger.set_env(env)
+            episode_stats_logger.reset()  # trigger stats save
+
             trajectory_dir = get_trajectory_dir(trajectory_serial)
             vid_name = os.path.join(trajectory_dir, 'demonstrated_trajectory_{}.mp4'.format(trajectory_serial))
             chosen_rollout_vid_paths = get_chosen_rollout_videos_for_trajectory(trajectory_serial)

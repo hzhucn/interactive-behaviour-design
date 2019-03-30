@@ -138,10 +138,20 @@ class VecRewardSwitcherWrapper(VecEnvWrapper):
 
 
 class LogEpisodeStats(Wrapper):
-    def __init__(self, env, log_dir=None, also_stdout=False):
+    def __init__(self, env, log_dir=None, suffix=None, stdout=False):
         Wrapper.__init__(self, env)
-        self.logger = easy_tf_log.Logger()
-        self.logger.set_log_dir(osp.join(logger.get_dir(), "env"))
+        self.stdout = stdout
+        if log_dir is None:
+            self.logger = None
+        else:
+            self.logger = easy_tf_log.Logger(log_dir)
+        self.suffix = ('' if suffix is None else suffix)
+        self.stats_envs = None
+        self.stats = {}
+        self.set_env(env)
+
+    def set_env(self, env):
+        self.env = env
         self.stats_envs = []
         while True:
             if isinstance(env, SaveEpisodeStats):
@@ -156,9 +166,15 @@ class LogEpisodeStats(Wrapper):
 
     def reset(self):
         obs = self.env.reset()
+        self.stats = {}
         for stats_env in self.stats_envs:
             for key, value in stats_env.last_stats.items():
-                self.logger.logkv('env/' + key, value)
+                self.stats[key] = value
+                key_with_suffix = f'env{self.suffix}/' + key
+                if self.logger:
+                    self.logger.logkv(key_with_suffix, value)
+                if self.stdout:
+                    print(key_with_suffix + ':', value)
             stats_env.last_stats = {}
         return obs
 
@@ -189,27 +205,25 @@ class SaveEpisodeStats(Wrapper):
         self.episode_n = -1
         self.episode_rewards = self.episode_length_steps = None
         self.last_stats = {}
-        self._new_episode()
 
     def reset(self):
         self.last_stats = {}
-        self.last_stats['reward_sum' + self.suffix] = sum(self.episode_rewards)
-        self.last_stats['episode_n' + self.suffix] = self.episode_n
-        self.last_stats['episode_length_steps' + self.suffix] = self.episode_length_steps
-        self._new_episode()
-        return self.env.reset()
+        if self.episode_n >= 0:
+            self.last_stats['reward_sum' + self.suffix] = sum(self.episode_rewards)
+            if not self.rewards_only:
+                self.last_stats['episode_n' + self.suffix] = self.episode_n
+                self.last_stats['episode_length_steps' + self.suffix] = self.episode_length_steps
 
-    def _new_episode(self):
         self.episode_n += 1
         self.episode_rewards = []
         self.episode_length_steps = 0
 
+        return self.env.reset()
+
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
-
         self.episode_rewards.append(reward)
         self.episode_length_steps += 1
-
         return obs, reward, done, info
 
 

@@ -72,7 +72,7 @@ def make_env(env_id, num_env, seed, experience_dir,
             env = EpisodeLengthLimitWrapper(env, max_episode_steps_value)
 
             if rank == 0:
-                env = LogEpisodeStats(env)
+                env = LogEpisodeStats(env, suffix='_train', log_dir=experience_dir)
                 env = Monitor(env, experience_dir,
                               lambda n: n and n % render_every_nth_episode == 0)  # save videos
                 env = SaveEpisodeObs(env, episode_obs_queue)

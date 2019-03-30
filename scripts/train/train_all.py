@@ -15,13 +15,13 @@ else:
 
 rl_envs = [
     ('seaquest', 'SeaquestDeepMind-v0'),
-    ('fetch', 'FetchPickAndPlace-Repeat1-BinaryGripper-5InitialBlockPos-FixedGoal-NoGripperBonus-ET-FastGripper-VanillaRL-FullObs-v0'),
+    ('fetch', 'FetchPickAndPlace-Repeat1-BinaryGripper-5InitialBlockPos-FixedGoal-NoGripperBonus-NoET-FastGripper-VanillaRL-FullObs-v0'),
     ('lunarlander', 'LunarLanderStatefulStats-v0'),
 ]
 
 prefs_envs = [
     ('seaquest', 'SeaquestDeepMindDense-v0'),
-    ('fetchpp', 'FetchPickAndPlace-Repeat3-BinaryGripper-5InitialBlockPos-FixedGoal-GripperBonus-NoET-SlowGripper-NoVanillaRL-PartialObs-v0'),
+    ('fetchpp', 'FetchPickAndPlace-Repeat1-BinaryGripper-5InitialBlockPos-FixedGoal-GripperBonus-NoET-SlowGripper-NoVanillaRL-PartialObs-v0'),
     ('lunarlander', 'LunarLanderStatefulStats-v0'),
 ]
 
@@ -38,6 +38,8 @@ for seed in seeds:
             run_name += '-test'
 
         if 'Fetch' in env_id:
+            # The speed of the Fetch subpolicies is set assuming Repeat1
+            assert 'Repeat1' in env_id
             rollout_length_seconds = 0.15
         else:
             rollout_length_seconds = 1.0
