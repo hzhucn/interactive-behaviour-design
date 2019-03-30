@@ -170,26 +170,31 @@ class FetchPickAndPlaceRewardWrapper(Wrapper):
         else:
             raise RuntimeError(f"reward mode is '{self.reward_mode}'")
 
-        # Considerations:
-        # - We could give rewards based on gripper width. But that would add a bias to rewards which might mask the
-        #   bonuses for e.g. moving in the right direction/ending the episode early - and that would confuse the
-        #   oracle demonstrator. So we give rewards based on /changes/ in gripper width.
-        # - The reward should be reasonably large (e.g. +2 instead of +1) so that the oracle demonstrator always
-        #   closes the gripper before trying to move the block.
-        if self.last_obs_by_name is not None:
-            last_grip_width = np.sum(self.last_obs_by_name['gripper_state'])
-            grip_width = np.sum(obs_by_name['gripper_state'])
+        # These rewards should be large enough that the oracle opens/closes the gripper before trying to move the block
+        grip_width = np.sum(obs_by_name['gripper_state'])
+        if self.reward_mode == 'nondelta':
             if self.grip_open_bonus:
-                # ~ +4.0 reward for fully closed to fully open, spread out over a few steps
-                # (This bonuses needs to be big enough that opening the gripper is always preferred to moving
-                #  towards the block.)
-                reward += 40 * (grip_width - last_grip_width)
-            if self.grip_close_bonus and self.object_between_grippers(obs_by_name):
-                # ~ +4.0 reward for fully open to closed around block, spread out over a few steps
-                bonus = 80 * (last_grip_width - grip_width)
-                if self.grip_open_bonus:
-                    bonus *= 1.5  # cancel out grip_open_bonus
+                # ~ +4.0 reward for fully open
+                bonus = 40 * grip_width
                 reward += bonus
+            if self.grip_close_bonus and self.object_between_grippers(obs_by_name):
+                # ~ +4.0 for closed around block
+                bonus = 80 * (0.1 - grip_width)
+                if self.grip_open_bonus:
+                    bonus *= 1.5  # cancel out open bonus
+                reward += bonus
+        else:
+            if self.last_obs_by_name is not None:
+                last_grip_width = np.sum(self.last_obs_by_name['gripper_state'])
+                if self.grip_open_bonus:
+                    # ~ +4.0 reward for fully closed to fully open, spread out over a few steps
+                    reward += 40 * (grip_width - last_grip_width)
+                if self.grip_close_bonus and self.object_between_grippers(obs_by_name):
+                    # ~ +4.0 reward for fully open to closed around block, spread out over a few steps
+                    bonus = 80 * (last_grip_width - grip_width)
+                    if self.grip_open_bonus:
+                        bonus *= 1.5  # cancel out grip_open_bonus
+                    reward += bonus
 
         if self.early_termination and np.linalg.norm(obs_by_name['goal_rel_object']) < 0.03:
             reward += 10
