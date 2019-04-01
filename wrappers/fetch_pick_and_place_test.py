@@ -81,7 +81,7 @@ def test_play(env_id):
     print(f"Using env {env_id}")
     env = gym.make(env_id)
     env._max_episode_steps = None
-    env._max_episode_seconds = 5
+    env._max_episode_seconds = None
     env = SaveObs(env)
     env = RenderObs(env)
     env = FetchPickAndPlaceDiscreteActions(env)
@@ -96,4 +96,4 @@ def test_play(env_id):
 if __name__ == '__main__':
     pp_register()
     test_play(
-        'FetchPickAndPlace-Repeat1-BinaryGripper-5InitialBlockPos-FixedGoal-NoGripperBonus-ET-FastGripper-VanillaRL-PartialObs-v0')
+        'FetchPickAndPlace-Repeat1-BinaryGripper-5InitialBlockPos-FixedGoal-NoGripperBonus-ET-FastGripper-VanillaRL-PartialObs-NonDelta-PickOnly-v0')
