@@ -13,14 +13,13 @@ from gym.wrappers import FlattenDictWrapper, Monitor
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from policies.base_policy import PolicyTrainMode
-from policies.td3 import TD3Policy, DemonstrationsBuffer
+from policies.td3 import TD3Policy, LockedReplayBuffer
 from subproc_vec_env_custom import CustomDummyVecEnv, CustomSubprocVecEnv
 from wrappers.fetch_pick_and_place_register import register
 from wrappers.fetch_pick_and_place import RandomInitialPosition
 from wrappers.util_wrappers import LogEpisodeStats
 
 tf.logging.set_verbosity(tf.logging.ERROR)
-register()
 
 
 class Oracle:
@@ -85,7 +84,7 @@ class Oracle:
         return action
 
 
-def gen_demonstrations(env_id, log_dir, n_demonstrations, demonstrations_buffer: DemonstrationsBuffer, oracle):
+def gen_demonstrations(env_id, log_dir, n_demonstrations, demonstrations_buffer: LockedReplayBuffer, oracle):
     env = gym.make(env_id)
     env.seed(0)
     np.random.seed(0)
@@ -98,9 +97,10 @@ def gen_demonstrations(env_id, log_dir, n_demonstrations, demonstrations_buffer:
         obs, done = env.reset(), False
         oracle.reset()
         while not done:
+            last_obs = obs
             action = oracle.get_action(obs)
-            demonstrations_buffer.store(obs, action)
             obs, reward, done, info = env.step(action)
+            demonstrations_buffer.store(obs=last_obs, act=action, next_obs=obs, done=done, rew=None)
 
 
 def get_replay_buffer(env, env_id):
@@ -124,6 +124,9 @@ def get_replay_buffer(env, env_id):
 
 
 class TestTD3(unittest.TestCase):
+    def setUpClass(cls):
+        register()
+
     @staticmethod
     def env_fn(seed, env_id):
         env = gym.make(env_id)
