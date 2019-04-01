@@ -62,6 +62,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('log_dir')
     parser.add_argument('env_id')
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--polyak', type=float, default=0.999995)
     args = parser.parse_args()
     os.makedirs(args.log_dir, exist_ok=True)
     record_context(os.path.join(args.log_dir, 'context.txt'), args)
@@ -93,7 +95,10 @@ def main():
                          act_space,
                          n_envs=n_envs,
                          hidden_sizes=(256, 256, 256, 256),
-                         train_mode=PolicyTrainMode.SQIL_ONLY
+                         train_mode=PolicyTrainMode.SQIL_ONLY,
+                         pi_lr=args.lr,
+                         q_lr=args.lr,
+                         polyak=args.polyak
                          )
 
 
