@@ -59,3 +59,5 @@ These will take about 40 minutes to complete.
   We should probably switch back to that latter reward function.
 * Implement monitoring for what proportion of segments from each episode are
   labelling when training in DRLHP mode.
+* Success rate for the demonstration environment (`env_demo/success_rate`) is
+  broken.
