@@ -123,37 +123,27 @@ def interpolate_steps(timestamp_value_tuples, timestamp_step_tuples):
 
 
 def find_training_start(run_dir):
-    training_start_line = None
-    with open(os.path.join(run_dir, 'flask.log'), 'r') as f:
-        for l in f.readlines():
-            if 'training_mode' in l and any(m in l for m in ['reward_only', 'reward_plus_bc', 'bc_only']):
-                training_start_line = l
-                break
-    if training_start_line is None:
-        raise Exception("Couldn't find training start line")
-    training_start_time_str = re.search(r'\[(.*)\]', training_start_line).group(1)
-    training_start_timestamp = dateutil.parser.parse(training_start_time_str).timestamp()
-    return training_start_timestamp
+    # The auto train script exits once training has started properly
+    return os.path.getmtime(os.path.join(run_dir, 'auto_train.log'))
 
 
 M = namedtuple('M', 'tag name smoothing fillsmoothing')
 
 
-def detect_metrics(env_name):
+def detect_metrics(env_name, train_env_key):
     metrics = []
     if 'Lunar Lander' in env_name:
-        metrics.append(M('env/reward_sum', 'Reward', 0.99, 0.99))
-        metrics.append(M('env/crash_rate', 'Crash rate', 0.995, 0.99))
-        metrics.append(M('env/successful_landing_rate', 'Successful landing rate', 0.995, 0.99))
+        metrics.append(M(f'{train_env_key}/reward_sum', 'Reward', 0.99, 0.99))
+        metrics.append(M(f'{train_env_key}/crash_rate', 'Crash rate', 0.995, 0.99))
+        metrics.append(M(f'{train_env_key}/successful_landing_rate', 'Successful landing rate', 0.995, 0.99))
     if 'Seaquest' in env_name:
-        metrics.append(M('env/reward_sum', 'Reward', 0.9, 0.9))
-        metrics.append(M('env/n_diver_pickups', 'Diver pickups per episode', 0.99, None))
+        metrics.append(M(f'{train_env_key}/reward_sum', 'Reward', 0.9, 0.9))
+        metrics.append(M(f'{train_env_key}/n_diver_pickups', 'Diver pickups per episode', 0.99, None))
     if 'Fetch' in env_name:
-        metrics.append(M('env_train/reward_sum', 'Reward (sparse)', 0.95, 0.9))
-        metrics.append(M('env_train/reward_sum_post_wrappers', 'Reward', 0.95, 0.9))
-        metrics.append(M('env_train/gripper_to_block_cumulative_distance', 'Distance from gripper to block', 0.99, 0.95))
-        metrics.append(M('env_train/block_to_target_cumulative_distance', 'Distance from block to target', 0.99, 0.99))
-        metrics.append(M('env_train/success_rate', 'Success rate', 0.95, 0.95))
+        metrics.append(M(f'{train_env_key}/reward_sum_post_wrappers', 'Reward', 0.95, 0.9))
+        metrics.append(M(f'{train_env_key}/gripper_to_block_cumulative_distance', 'Distance from gripper to block', 0.99, 0.95))
+        metrics.append(M(f'{train_env_key}/block_to_target_cumulative_distance', 'Distance from block to target', 0.99, 0.99))
+        metrics.append(M(f'{train_env_key}/success_rate', 'Success rate', 0.95, 0.95))
     return metrics
 
 
@@ -189,6 +179,7 @@ def match_lengths(xs_list, ys_list):
             assert len(xs_list[n]) == len(ys_list[n])
             xs_list[n] = xs_list[n][:-n_to_drop]
             ys_list[n] = ys_list[n][:-n_to_drop]
+
 
 def plot_averaged(xs_list, ys_list, smoothing, fillsmoothing, color, label):
     # Interpolate all data to have common x values
@@ -250,6 +241,7 @@ def main():
     parser.add_argument('--cols', type=int, default=4)
     parser.add_argument('--max_steps', type=float)
     parser.add_argument('--max_hours', type=float)
+    parser.add_argument('--train_env_key', default='env')
     args = parser.parse_args()
 
     if args.test:
@@ -289,9 +281,9 @@ def main():
                 events_by_run_type_by_seed[run_type_dir.name][seed_dir.name] = events
 
         print("Plotting...")
+        metrics = detect_metrics(env_dir.name, args.train_env_key)
 
         # Plot metrics by time
-        metrics = detect_metrics(env_dir.name)
         for metric_n, metric in enumerate(metrics):
             figure(metric_n)
             escaped_metric_name = metric.name.replace(' ', '_').replace('.', '').lower()
@@ -302,6 +294,9 @@ def main():
                 xs_list = []
                 ys_list = []
                 for events in events_by_run_type_by_seed[run_type].values():
+                    if metric.tag not in events:
+                        print(f"Error: couldn't find metric '{metric.tag}' in run '{run_type}'", file=sys.stderr)
+                        exit(1)
                     relative_timestamps_hours, values = make_timestamps_relative_hours(events[metric.tag])
                     if args.max_hours:
                         values = np.extract(np.array(relative_timestamps_hours) < args.max_hours,
@@ -319,12 +314,12 @@ def main():
             ylabel(metric.name)
             legend()
             ylim([all_min_y, all_max_y])
-            savefig('{}_{}_by_time.png'.format(escaped_env_name, escaped_metric_name), dpi=300, bbox_inches='tight')
+            fig_filename = '{}_{}_by_time.png'.format(escaped_env_name, escaped_metric_name)
+            savefig(fig_filename, dpi=300, bbox_inches='tight')
 
         close('all')
 
         # Plot metrics by step
-        metrics = detect_metrics(env_dir.name)
         for metric_n, metric in enumerate(metrics):
             figure(metric_n)
             escaped_metric_name = metric.name.replace(' ', '_').replace('.', '').lower()
@@ -356,11 +351,6 @@ def main():
             ylim([all_min_y, all_max_y])
             fig_filename = '{}_{}_by_step.png'.format(escaped_env_name, escaped_metric_name)
             savefig(fig_filename, dpi=300, bbox_inches='tight')
-
-            subprocess.run(['montage',
-                            fig_filename.replace('step', 'time'), fig_filename,
-                            '-tile', 'x1', '-mode', 'concatenate',
-                            fig_filename.replace('step', 'time+step')])
 
 
 if __name__ == '__main__':
