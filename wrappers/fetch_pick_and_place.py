@@ -370,4 +370,5 @@ class PickOnly(Wrapper):
         obs_by_name = decode_fetch_obs(obs)
         if np.linalg.norm(obs_by_name['object_rel_pos']) < 0.1:
             done = True
+            reward += 10  # Make sure the oracle definitely prefers this segment
         return obs, reward, done, info
