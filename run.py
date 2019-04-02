@@ -3,7 +3,7 @@
 import os
 import random
 
-if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+if  'CUDA_VISIBLE_DEVICES' not in os.environ:
     if random.random() < 0.5:
         d = '0'
     else:
