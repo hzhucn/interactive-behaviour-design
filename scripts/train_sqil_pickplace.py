@@ -64,6 +64,7 @@ def main():
     parser.add_argument('env_id')
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--polyak', type=float, default=0.999995)
+    parser.add_argument('--seed', type=int, default=0)
     args = parser.parse_args()
     os.makedirs(args.log_dir, exist_ok=True)
     record_context(os.path.join(args.log_dir, 'context.txt'), args)
@@ -83,7 +84,8 @@ def main():
         return env
 
     n_envs = 19
-    train_env = CustomSubprocVecEnv(env_fns=[lambda env_n=env_n: env_fn(seed=env_n, log_dir=args.log_dir)
+    train_env = CustomSubprocVecEnv(env_fns=[lambda env_n=env_n: env_fn(seed=((args.seed * n_envs) + env_n),
+                                                                        log_dir=args.log_dir)
                                              for env_n in range(n_envs)])
 
     obs_space = train_env.observation_space
@@ -98,7 +100,8 @@ def main():
                          train_mode=PolicyTrainMode.SQIL_ONLY,
                          pi_lr=args.lr,
                          q_lr=args.lr,
-                         polyak=args.polyak
+                         polyak=args.polyak,
+                         seed=args.seed
                          )
 
 
