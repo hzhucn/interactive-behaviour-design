@@ -261,20 +261,15 @@ def main():
             for seed_dir in os.scandir(run_type_dir.path):
                 print(f"Reading events for {env_dir.name}/{run_type_dir.name}/{seed_dir.name}")
                 events = read_all_events(seed_dir.path)
-
-                # Filter out events from the initial pretraining period
-                # (in particular, for DRLHP, filter out env rewards from pretraining)
-                try:
+                if run_type_dir.name not in ['RL', 'BC']:
+                    # Filter out events from the initial pretraining period
+                    # (in particular, for DRLHP, filter out env rewards from pretraining)
                     training_start_timestamp = find_training_start(seed_dir.path)
-                    first_step = events['policy_master/n_total_steps'][0][1]
-                except:
-                    # No big deal - we're in RL-only or BC-only mode
-                    pass
-                else:
                     for tag in events:
                         events[tag] = [(t, v) for t, v in events[tag] if t >= training_start_timestamp]
                     events = {k: v for k, v in events.items() if v}
                     # Reset the steps to start from 0 after the pretraining period
+                    first_step = events['policy_master/n_total_steps'][0][1]
                     events['policy_master/n_total_steps'] = [(t, step - first_step)
                                                              for t, step in events['policy_master/n_total_steps']]
 
