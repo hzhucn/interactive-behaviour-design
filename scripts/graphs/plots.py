@@ -133,9 +133,9 @@ M = namedtuple('M', 'tag name smoothing fillsmoothing')
 def detect_metrics(env_name, train_env_key):
     metrics = []
     if 'Lunar Lander' in env_name:
-        metrics.append(M(f'{train_env_key}/reward_sum', 'Reward', 0.99, 0.99))
-        metrics.append(M(f'{train_env_key}/crash_rate', 'Crash rate', 0.995, 0.99))
-        metrics.append(M(f'{train_env_key}/successful_landing_rate', 'Successful landing rate', 0.995, 0.99))
+        metrics.append(M(f'{train_env_key}/reward_sum', 'Reward', 0.95, 0.95))
+        metrics.append(M(f'{train_env_key}/crash_rate', 'Crash rate', 0.95, 0.95))
+        metrics.append(M(f'{train_env_key}/successful_landing_rate', 'Successful landing rate', 0.95, 0.95))
     if 'Seaquest' in env_name:
         metrics.append(M(f'{train_env_key}/reward_sum', 'Reward', 0.9, 0.9))
         metrics.append(M(f'{train_env_key}/n_diver_pickups', 'Diver pickups per episode', 0.99, None))
