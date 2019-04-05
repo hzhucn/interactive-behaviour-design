@@ -20,6 +20,12 @@ For binary dependencies, see the [Dockerfile](Dockerfile).
 Package dependencies are listed in the [Pipfile](Pipfile), but need to be installed
 in a particular order. Again, check the [Dockerfile](Dockerfile).
 
+A Docker image set up with the current set of requirements is hosted on the
+Amazon Elastic Container Registry, but is currently private because it contains
+a MuJoCo key. This container is used for automatic tests with Travis CI and
+for runs on AWS Batch (described below). To rebuild the Docker image, see
+[`scripts/build_docker.sh`](scripts/build_docker.sh).
+
 ## Usage
 
 [`run.py`](run.py) is the main program file. Basic usage is
