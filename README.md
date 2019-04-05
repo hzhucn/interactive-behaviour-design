@@ -49,23 +49,23 @@ Once finished initialising, `run.py` serves a web app on port 5000. Important pa
 Training is controlled through commands given to `/run_cmd`. Commands follow a basic format of `/run_cmd?cmd=cmd_name&args=cmd_args`.
 Important commands are listed below.
 
-*Goal state classifier commands*
+**Goal state classifier commands**
 * `cmd=add_classifier&name=classifier_name`: add a goal state classifier
 * `cmd=use_classifier&name=classifier_name`: specified classifier is marked as 'selected';
 * `cmd=train&n_epochs=n_epochs`: train the selected classifier
 
-*Policy commands*
+**Policy commands**
 * `cmd=add_policy&name=policy_name`: add a (randomly-initialised) policy
 * `cmd=training_mode&mode={reward_only,bc_only,reward_plus_bc,no_training}`: set how the current policy is to be trained (default: `reward_only`)
 * `cmd=set_reward_source&src={env,classifier,drlhp,none}`: for reward-based training modes, use rewards from the environment,
   from the selected goal state classifier, from the DRLHP reward predictor, or provide zero rewards (default: `none`)
 * `cmd=use_policy&name=policy_name`: start training the specific policy
 
-*Reward predictor commands*
+**Reward predictor commands**
 * `cmd=start_drlhp_training`: start DRLHP reward predictor training
 * `cmd=stop_drlhp_training`: stop training
 
-*Reset state commands*
+**Reset state commands**
 * `cmd=add_reset_pool&name=pool_name&max_len=max_len`:
   add a named pool of reset states. If `max_len` is specified, old states are dropped
   when the pool exceeds the specified size.
