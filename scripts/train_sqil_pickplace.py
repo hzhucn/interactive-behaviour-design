@@ -61,9 +61,9 @@ def run_test_env(policy_fn_pickle, env_id, log_dir, n_test_eps_val: multiprocess
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('log_dir')
-    parser.add_argument('env_id')
+    parser.add_argument('--env_id', default='FetchPickAndPlace-Repeat1-ContGripper-WithGripObs-1InitialBlockPos-FixedGoal-Delta-GripperBonuses-v0')
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--polyak', type=float, default=0.999995)
+    parser.add_argument('--polyak', type=float, default=0.9995)
     parser.add_argument('--seed', type=int, default=0)
     args = parser.parse_args()
     os.makedirs(args.log_dir, exist_ok=True)
