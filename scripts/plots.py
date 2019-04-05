@@ -151,6 +151,11 @@ def detect_metrics(env_name, train_env_key):
                          0.99, 0.95))
         metrics.append(M(f'{train_env_key}/block_to_target_cumulative_distance', 'Distance from block to target',
                          0.99, 0.99))
+        metrics.append(
+            M(f'{train_env_key}/block_to_target_min_distance', 'Minimum distance from block to target', 0.95, 0.95))
+        metrics.append(
+            M(f'{train_env_key}/ep_frac_aligned_with_block', 'Fraction of episode aligned with block', 0.95, 0.95))
+        metrics.append(M(f'{train_env_key}/ep_frac_gripping_block', 'Fraction of episode gripping block', 0.95, 0.95))
         metrics.append(M(f'{train_env_key}/success_rate', 'Success rate', 0.95, 0.95))
     return metrics
 
@@ -334,8 +339,9 @@ def main():
     for env_name, events_by_run_type_by_seed in events_by_env_name_by_run_type_by_seed.items():
         print(f"Plotting {env_name}...")
         metrics = detect_metrics(env_name, args.train_env_key)
-        for value_fn, x_type, x_label in [(partial(get_values_by_time, max_hours=args.max_hours), 'time', 'Hours'),
-                                          (partial(get_values_by_step, max_steps=args.max_steps), 'step', 'Steps')]:
+        for value_fn, x_type, x_label, x_lim in [
+            (partial(get_values_by_time, max_hours=args.max_hours), 'time', 'Hours', args.max_hours),
+            (partial(get_values_by_step, max_steps=args.max_steps), 'step', 'Steps', args.max_steps)]:
             for metric_n, metric in enumerate(metrics):
                 figure(metric_n)
                 all_min_y = float('inf')
@@ -368,6 +374,8 @@ def main():
                 xlabel(x_label)
                 ylabel(metric.name)
                 xlim(left=0)
+                if x_lim is not None:
+                    xlim(right=x_lim)
                 ylim([all_min_y, all_max_y])
 
                 escaped_env_name = env_name.replace(' ', '_').lower()
