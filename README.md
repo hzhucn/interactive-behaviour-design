@@ -90,8 +90,15 @@ the various stages of training.
 Use [`scripts/train/auto_train_rl.py`](scripts/train/auto_train_rl.py)
 to train using vanilla RL with rewards from the environment.
 
-To produce a full set of results, run the commands produced by
+To produce a full set of results using the oracle, run the commands produced by
 [`scripts/train/train_all.py`](scripts/train/train_all.py).
+
+### Training on AWS
+
+See [`interactive-behaviour-design-aws`](https://github.com/HumanCompatibleAI/interactive-behaviour-design-aws)
+for scripts to train on AWS. For example, to produce a full set of results using AWS:
+
+`$ scripts/train_all.py | aws_run_ibd_cmds.py`
 
 ## Tests
 
