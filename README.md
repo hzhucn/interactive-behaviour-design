@@ -1,5 +1,7 @@
 # Interactive behaviour design
 
+[![Build Status](https://travis-ci.com/HumanCompatibleAI/interactive-behaviour-design.svg?branch=master)](https://travis-ci.com/HumanCompatibleAI/interactive-behaviour-design)
+
 This repository contains the code for
 [*Towards an IDE for agent design*](https://drive.google.com/file/d/1lYdp5ym5OeL0WpzVBLL1rZYpga_1h6WC/view),
 and for Matthew's master's thesis, *Designing agents with user-defined concepts*.
