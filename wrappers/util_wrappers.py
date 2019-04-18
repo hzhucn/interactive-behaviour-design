@@ -144,7 +144,7 @@ class LogEpisodeStats(Wrapper):
         if log_dir is None:
             self.logger = None
         else:
-            self.logger = easy_tf_log.Logger(log_dir)
+            self.logger = easy_tf_log.Logger(log_dir=log_dir)
         self.suffix = ('' if suffix is None else suffix)
         self.stats_envs = None
         self.stats = {}
