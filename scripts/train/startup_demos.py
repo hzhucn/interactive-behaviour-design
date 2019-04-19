@@ -6,14 +6,14 @@ Start a single training run, opening demonstrations in Chrome.
 
 import argparse
 import os
+import json
 import random
-import socket
 import subprocess
 import sys
 import time
 import uuid
-from threading import Thread
 
+import numpy as np
 import requests
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -27,17 +27,19 @@ def get_args():
     parser.add_argument('segment_generation', choices=['demonstrations', 'drlhp', 'both'])
     parser.add_argument('run_name')
     parser.add_argument('--n_envs', type=int, default=16)
-    parser.add_argument('--n_initial_prefs', type=int, default=500)
+    parser.add_argument('--n_prefs_before_training', type=int, default=10)
+    parser.add_argument('--n_initial_prefs', type=int, default=200)
     parser.add_argument('--n_demos_before_training', type=int, default=2)
-    parser.add_argument('--n_initial_demos', type=int, default=10)
-    parser.add_argument('--pretrain_reward_predictor_seconds', type=int, default=1200)
+    parser.add_argument('--n_initial_demos', type=int, default=7)
+    parser.add_argument('--pretrain_reward_predictor_seconds', type=int, default=30)
     parser.add_argument('--tmux_sess')
     if os.path.exists('/efs'):
         default_log_dir = '/efs'
     else:
         default_log_dir = 'runs'
     parser.add_argument('--log_dir', default=default_log_dir)
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--n_seeds', type=int, default=1) #if n>1, use n *random seeds
+    parser.add_argument('--seeds', nargs='*', type=int, default=[76,233,429])
     parser.add_argument('--disable_redo', action='store_true')
     parser.add_argument('--extra_args')
     parser.add_argument('--time', default=str(int(time.time())))
@@ -56,9 +58,8 @@ def get_args():
 
 
 def main():
-    stagger = random.randint(1, 20)
-    time.sleep(stagger)
-
+    #stagger = random.randint(1, 20)
+    #time.sleep(stagger)
     args = get_args()
     os.makedirs(args.log_dir, exist_ok=True)
 
@@ -71,59 +72,56 @@ def main():
         return
 
     save_args(args, args.log_dir, 'startup_demos_args.txt')
-    port = 5000 #get_open_port()
-    base_url = f'http://localhost:{port}'
 
-    start_app(base_url, args.env_id, args.n_envs, port, args.seed, args.log_dir, args.tmux_sess, args.disable_redo,
-              args.extra_args)
-    if args.segment_generation == 'drlhp':
-        # In DRLHP mode, the master policy itself generates segments, so it needs to be added right at the beginning
+    seeds = args.seeds
+    if args.n_seeds > 1:
+        seeds = np.random.randint(0, 500, args.n_seeds)
+
+    i = 0
+    for seed in seeds:
+        port = 5000 + i #get_open_port()
+        base_url = f'http://localhost:{port}'
+
+        log_dir = os.path.join(args.log_dir, f"{args.segment_generation}-{seed}")
+        start_app(base_url, args.env_id, args.n_envs, port, seed, log_dir, args.tmux_sess, args.disable_redo,
+                  args.extra_args)
+
+        #ngrok_url = forward_port(port, args.tmux_sess, seed)
         add_master_policy(base_url)
-        wait_for_drlhp_segments(base_url)
-        oracle_window_name = start_oracle(base_url, args.segment_generation, args.tmux_sess, args.log_dir,
-                                          args.min_label_interval_seconds)
-        start_kill_oracle_after_n_interactions_thread(args.max_interactions, args.log_dir, oracle_window_name)
-        wait_for_initial_preferences(base_url, args.n_initial_prefs)
-        start_reward_predictor_training(base_url, args.pretrain_reward_predictor_seconds)
-    elif args.segment_generation == 'demonstrations':
-        add_master_policy(base_url)
-        wait_for_demonstration_rollouts(base_url) #start rollouts
-        wait_for_initial_demonstrations(base_url, args.n_demos_before_training) #wait for # demos => start training
-        if args.training_mode in ['reward_only', 'reward_plus_bc']:
-            # We assume we already have sufficient initial preferences
-            # from initial demonstrations
+        if args.segment_generation == 'drlhp':
+            wait_for_drlhp_segments(base_url)
+            print(f"Give comparisons at {base_url + '/compare_segments'}, can stop after {args.n_initial_prefs} prefs")
+            wait_for_n_preferences(base_url, args.n_prefs_before_training)  # wait for # prefs => start training
+            if args.training_mode in ['reward_only', 'reward_plus_bc']:
+                print("Hold off on demonstrations")
+                start_reward_predictor_training(base_url, args.pretrain_reward_predictor_seconds)
+            start_training(base_url, args.training_mode, args.segment_generation)
+            print("Start demonstrations again")
+            wait_for_n_preferences(base_url, args.n_initial_prefs, args.n_prefs_before_training)
+        elif args.segment_generation == 'demonstrations':
+            wait_for_demonstration_rollouts(base_url) #start rollouts
+            print(f"Rollouts started at {base_url + '/demonstrate'}, can stop after {args.n_initial_demos} demos")
+            wait_for_n_demonstrations(base_url, args.n_demos_before_training) #wait for # demos => start training
+            if args.training_mode in ['reward_only', 'reward_plus_bc']:
+                print("Hold off on demonstrations")
+                start_reward_predictor_training(base_url, args.pretrain_reward_predictor_seconds)
+            start_training(base_url, args.training_mode, args.segment_generation)
+            print("Start demonstrations again")
+            wait_for_n_demonstrations(base_url, args.n_initial_demos, args.n_demos_before_training)
+        elif args.segment_generation == 'both':
+            # TODO
+            wait_for_demonstration_rollouts(base_url)
+            wait_for_drlhp_segments(base_url)
+            wait_for_n_demonstrations(base_url, args.n_initial_demos)
             start_reward_predictor_training(base_url, args.pretrain_reward_predictor_seconds)
-        start_training(base_url, args.training_mode, args.segment_generation)
-    elif args.segment_generation == 'both':
-        add_master_policy(base_url)
-        wait_for_demonstration_rollouts(base_url)
-        wait_for_drlhp_segments(base_url)
-        start_oracle(base_url, 'drlhp', args.tmux_sess, args.log_dir, args.min_label_interval_seconds)
-        start_oracle(base_url, 'demonstrations', args.tmux_sess, args.log_dir, args.min_label_interval_seconds)
-        wait_for_initial_demonstrations(base_url, args.n_initial_demos)
-        start_reward_predictor_training(base_url, args.pretrain_reward_predictor_seconds)
-    else:
-        raise Exception()
-    if args.segment_generation == 'demonstrations':
-        configure_env_resets(base_url)
-    #start_training(base_url, args.training_mode, args.segment_generation)
-
-
-def start_kill_oracle_after_n_interactions_thread(n, log_dir, oracle_window_name):
-    if n is None:
-        return
-
-    def f():
-        wait_for_n_interactions(log_dir, n)
-        print(f"{n} interactions finished; killing oracle")
-        cmd = ['tmux', 'kill-window', '-t', oracle_window_name]
-        subprocess.run(cmd)
-
-    Thread(target=f).start()
-
+        else:
+            raise Exception()
+        if args.segment_generation == 'demonstrations':
+            configure_env_resets(base_url)
+        i += 1
 
 def start_app(base_url, env_id, n_envs, port, seed, log_dir, tmux_sess, disable_redo, extra_args):
-    cmd = f'python -u run.py {env_id} --n_envs {n_envs} --port {port} --log_dir {log_dir} --seed {seed}'
+    cmd = f'python -u run.py {env_id} --n_envs {n_envs} --port {port} --render_segments --log_dir {log_dir} --seed {seed}'
     if not disable_redo:
         cmd += ' --redo_policy'
     if 'Seaquest' in env_id:
@@ -135,8 +133,8 @@ def start_app(base_url, env_id, n_envs, port, seed, log_dir, tmux_sess, disable_
     if extra_args is not None:
         cmd += ' ' + extra_args
     cmd += f' 2>&1 | tee {log_dir}/output.log'
-    run_in_tmux_sess(tmux_sess, cmd, "app")
-    print("Waiting for app to start...")
+    run_in_tmux_sess(tmux_sess, cmd, f"seed{seed}")
+    print(f"Waiting for run {env_id} seed {seed} to start...")
     while True:
         try:
             requests.get(base_url + '/get_status')
@@ -144,7 +142,6 @@ def start_app(base_url, env_id, n_envs, port, seed, log_dir, tmux_sess, disable_
             time.sleep(0.5)
         else:
             break
-
 
 def add_master_policy(base_url):
     print("Adding master policy...")
@@ -179,14 +176,6 @@ def wait_for_drlhp_segments(base_url):
         else:
             time.sleep(0.5)
 
-
-def start_oracle(base_url, segment_generation, tmux_sess, log_dir, min_label_interval_seconds):
-    cmd = (f'python -u oracle.py {base_url} {segment_generation} {min_label_interval_seconds}'
-           f' 2>&1 | tee {log_dir}/oracle.log')
-    oracle_window_name = run_in_tmux_sess(tmux_sess, cmd, "oracle")
-    return oracle_window_name
-
-
 def wait_for_n_interactions(log_dir, n):
     search_string = f"Simulated {n} interactions"
     while True:
@@ -200,27 +189,30 @@ def wait_for_n_interactions(log_dir, n):
         time.sleep(1)
 
 
-def wait_for_initial_demonstrations(base_url, n_initial_demos):
-    n_demos = 0
-    while n_demos < n_initial_demos:
-        print(f"Waiting for initial demonstrations ({n_demos} clips so far)")
+def wait_for_n_demonstrations(base_url, n, curr_n_demos=0):
+    last_n_demos = -1
+    while curr_n_demos < n:
+        if curr_n_demos > last_n_demos:
+            print(f"Waiting for {n} demonstrations ({curr_n_demos} demos so far)")
+            last_n_demos = curr_n_demos
         time.sleep(1)
-        n_demos = get_n_demos(base_url)
+        curr_n_demos = get_n_demos(base_url)
 
-
-def wait_for_initial_preferences(base_url, n_initial_prefs):
-    n_prefs = 0
-    while n_prefs < n_initial_prefs:
-        print(f"Waiting for initial preferences ({n_prefs} so far)")
+def wait_for_n_preferences(base_url, n, curr_n_prefs=0):
+    last_n_prefs = -1
+    print_freq = 10
+    while curr_n_prefs < n:
+        if curr_n_prefs > last_n_prefs:
+            print(f"Waiting for {n} preferences (>= {curr_n_prefs} so far)")
+            last_n_prefs = curr_n_prefs * print_freq
         time.sleep(1)
-        n_prefs = get_n_prefs(base_url)
+        curr_n_prefs = get_n_prefs(base_url)
 
 
 def start_reward_predictor_training(base_url, seconds):
-    print("Pretraining reward predictor...")
+    print(f"Pretraining reward predictor for {seconds / 60} min...")
     requests.get(base_url + '/run_cmd?cmd=start_drlhp_training').raise_for_status()
     time.sleep(seconds)
-
 
 def start_training(base_url, training_mode, segment_generation):
     print("Starting training...")
@@ -228,7 +220,6 @@ def start_training(base_url, training_mode, segment_generation):
     requests.get(base_url + f'/run_cmd?cmd=training_mode&mode={training_mode}')
     if training_mode in ['reward_only', 'reward_plus_bc']:
         requests.get(base_url + '/run_cmd?cmd=set_reward_source&src=drlhp').raise_for_status()
-
 
 def configure_env_resets(base_url):
     requests.get(base_url + '/run_cmd?cmd=add_reset_pool&name=random_states_from_episode&max_len=100')
@@ -249,17 +240,16 @@ def get_n_demos(base_url):
 
 def start_tmux_sess_with_cmd(sess_name, cmd):
     cmd += '; echo; read -p "Press enter to exit..."'
-    cmd = ['tmux', 'new-sess', '-d', '-s', sess_name, '-n', f'{sess_name}-main', cmd]
+    cmd = ['tmux', 'new-sess', '-d', '-s', sess_name, '-n', f'main', cmd]
     subprocess.run(cmd)
 
 
 def run_in_tmux_sess(sess_name, cmd, window_name):
-    window_name += '_' + str(uuid.uuid4())[:4]
+    #window_name += '_' + str(uuid.uuid4())[:4]
     cmd += '; echo; read -p "Press enter to exit..."'
-    tmux_cmd = ['tmux', 'new-window', '-ad', '-t', f'{sess_name}-main', '-n', window_name, cmd]
+    tmux_cmd = ['tmux', 'new-window', '-ad', '-t', f'main', '-n', window_name, cmd] #-n makes new window
     subprocess.run(tmux_cmd)
     return window_name
-
 
 def get_open_port():
     s = socket.socket()
@@ -268,6 +258,21 @@ def get_open_port():
     s.close()
     return port
 
+import socket
+def forward_port(port, tmux_sess, run_seed):
+    cmd = f"~/.ngrok http {port}" #requires ngrok to be installed at ~/.ngrok
+    run_in_tmux_sess(tmux_sess, cmd, f"ngrok_{run_seed}")
+
+    url = "http://localhost:4040/api/tunnels"
+    connected = False
+    while not connected:
+        try:
+            res = requests.get(url)
+            res_unicode = res.content.decode("utf-8")
+            res_json = json.loads(res_unicode)
+            return res_json["tunnels"][0]["public_url"]
+        except Exception as e:
+            pass
 
 if __name__ == '__main__':
     main()
