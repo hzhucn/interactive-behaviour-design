@@ -90,7 +90,8 @@ def get_rollouts():
 
     rollout_dict = {rollout_hash_str: (rollout.generating_policy, rollout.vid_filename, rollout.rewards)
                     for rollout_hash_str, rollout in rollouts.items()}
-    return json.dumps([rollout_group, rollout_dict])
+    group_serial = re.match(r'metadata_(.*)\.json', rollout_group)[1]
+    return json.dumps([rollout_group, rollout_dict, trajectory_for_group_dict[group_serial]])
 
 
 def process_choice_and_generate_new_rollouts(rollouts: Dict[str, CompressedRollout],
@@ -186,7 +187,8 @@ def choose_rollout():
             rollout_group_hash_strs = json.load(f)
     except Exception as e:
         return e
-    if not chosen_rollout_hash_str in rollout_group_hash_strs and chosen_rollout_hash_str != 'none' and chosen_rollout_hash_str != 'equal':
+    if not chosen_rollout_hash_str in rollout_group_hash_strs \
+            and chosen_rollout_hash_str != 'none' and chosen_rollout_hash_str != 'equal':
         msg = f"Error: rollout '{chosen_rollout_hash_str}' not in group '{group_name}'"
         print(msg)
         return msg

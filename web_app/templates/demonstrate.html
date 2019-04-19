@@ -12,6 +12,9 @@
 
     let rolloutGroup = null;
     let rolloutHashes = [];
+    let lastTrajectory = null;
+    let currTrajectory = null;
+    let chooseLast = false;
 
     function init() {
         updateSoftmaxDisplay($("#softmaxTemp").val());
@@ -57,6 +60,8 @@
             }
             rolloutGroup = parsedData[0];
             let rolloutDict = parsedData[1];
+            currTrajectory = parsedData[2];
+
             let sortedRolloutDict = sortRolloutDictByPolicy(rolloutDict);
             //testSortDict(rolloutDict);
             let nVidsSent = Object.keys(rolloutDict).length;
@@ -102,6 +107,16 @@
                 label.innerHTML = rolloutName + ' (' + rolloutHash + ')<br/>'
                                 + 'Reward for this segment: ' + rewardSum.toFixed(3); //3 decimal places
             }
+
+            console.log("Choosing last: " + chooseLast);
+            console.log(lastTrajectory + "," + currTrajectory);
+            console.log("Match: "  + lastTrajectory == currTrajectory)
+            if (chooseLast && lastTrajectory == currTrajectory) {
+                chooseRollout(rolloutHashes[rolloutHashes.length - 1]);
+            } else {
+                chooseLast = false;
+            }
+            lastTrajectory = currTrajectory;
         });
     }
 
@@ -160,6 +175,12 @@
         });
     }
 
+    function chooseLastRolloutUntilEpisodeOver() {
+        chooseLast = true;
+        console.log("Set chooseLast: " + chooseLast);
+        chooseRollout(rolloutHashes[rolloutHashes.length - 1]);
+    }
+
     function handleKeyDown(e) {
         let rolloutPoliciesBox = $('#rolloutPoliciesBox');
         if (rolloutPoliciesBox.is(':focus')) {
@@ -170,7 +191,7 @@
         if (e.key === 'e') {
             rolloutHash = 'equal';
         } else if (e.key === 'n') {
-            rolloutHash = 'none';
+            rolloutHash = null; //don't do anything for now, was 'none' before
         } else {
             let n = parseInt(e.key);
             if ((!isNaN(n)) && (n >= 1) && (n <= rolloutHashes.length)) {
@@ -234,6 +255,7 @@
 </div><br/>
 
 <input type="button" value="Generate rollouts from reset" onclick="generateRolloutsAndUpdateVideos()"/>
+<input type="button" value="Last rollout till end" onclick="chooseLastRolloutUntilEpisodeOver()"/>
 
 <p>Select preferred rollout by clicking or by using one of the number keys.</p>
 <p>'e' = indicate equal preference among all rollouts.</p>
