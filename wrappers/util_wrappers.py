@@ -20,6 +20,8 @@ import easy_tf_log
 import numpy as np
 from gym.core import ObservationWrapper, Wrapper
 
+import global_constants
+from a2c.common.vec_env.subproc_vec_env import SubprocVecEnv as A2CSubprocVecEnv
 from baselines import logger
 from a2c.common.vec_env import VecEnvWrapper
 from classifier_collection import ClassifierCollection
@@ -501,8 +503,6 @@ class DummyRender(Wrapper):
 
 
 class SaveSegments(Wrapper):
-    FRAMES_PER_SEGMENT = 30
-
     def __init__(self, env, segment_queue: multiprocessing.Queue):
         Wrapper.__init__(self, env)
         self.queue = segment_queue
@@ -517,7 +517,7 @@ class SaveSegments(Wrapper):
         self.segment_rewards = []
 
     def _pad_segment(self):
-        while len(self.segment_obses) < self.FRAMES_PER_SEGMENT:
+        while len(self.segment_obses) < global_constants.FRAMES_PER_SEGMENT:
             self.segment_frames.append(self.segment_frames[-1])
             self.segment_obses.append(self.segment_obses[-1])
             self.segment_rewards.append(self.segment_rewards[-1])
@@ -527,7 +527,7 @@ class SaveSegments(Wrapper):
         self.segment_frames.append(self.env.render(mode='rgb_array'))
         self.segment_obses.append(np.copy(obs))
         self.segment_rewards.append(reward)
-        if done or len(self.segment_obses) == self.FRAMES_PER_SEGMENT:
+        if done or len(self.segment_obses) == global_constants.FRAMES_PER_SEGMENT:
             self._pad_segment()
             tuple = (self.segment_obses, self.segment_rewards, self.segment_frames)
             try:
