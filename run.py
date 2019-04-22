@@ -53,7 +53,8 @@ from rollouts import RolloutsByHash
 from utils import find_latest_checkpoint, MemoryProfiler
 from segments import monitor_segments_dir_loop, write_segments_loop
 from wrappers import seaquest_reward, fetch_pick_and_place_register, lunar_lander_reward
-from wrappers.util_wrappers import VecRewardSwitcherWrapper, ResetMode, ResetStateCache, VecLogRewards, DummyRender
+from wrappers.util_wrappers import VecRewardSwitcherWrapper, ResetMode, ResetStateCache, VecLogRewards, DummyRender, \
+    VecSaveSegments
 from policy_rollouter import PolicyRollouter
 from checkpointer import Checkpointer
 from web_app.app import run_web_app
@@ -265,6 +266,9 @@ def main():
         print("Adding classifier for label '{}'...".format(label_name))
         classifier.add_classifier(label_name)
 
+
+    if global_variables.segment_save_mode == 'multi_env':
+        env = VecSaveSegments(env, segments_queue)
     env = VecLogRewards(env, os.path.join(log_dir, 'vec_rewards'))
     env = VecRewardSwitcherWrapper(env, classifier,
                                    reward_predictor_network,

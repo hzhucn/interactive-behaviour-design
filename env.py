@@ -6,14 +6,16 @@ from gym.envs.atari import AtariEnv
 from gym.envs.robotics import FetchEnv
 from gym.wrappers import Monitor, TimeLimit
 
+import global_variables
 from a2c.common import gym
 from a2c.common.vec_env.subproc_vec_env import SubprocVecEnv
 from global_constants import ROLLOUT_FPS
 from utils import unwrap_to
 from wrappers.lunar_lander_stateful import LunarLanderStateful
 from wrappers.util_wrappers import StoredResetsWrapper, SaveMidStateWrapper, \
-    StateBoundaryWrapper, SaveEpisodeObs, SaveSegments, \
+    SaveEpisodeObs, SaveSegments, \
     EpisodeLengthLimitWrapper, SaveEpisodeStats, LogEpisodeStats, DummyRender, LogDoneInfo
+from wrappers.state_boundary_wrapper import StateBoundaryWrapper
 
 
 def set_timeouts(env):
@@ -78,7 +80,8 @@ def make_env(env_id, num_env, seed, experience_dir,
                 env = SaveEpisodeObs(env, episode_obs_queue)
                 if not render_segments:
                     env = DummyRender(env)
-                env = SaveSegments(env, segments_queue)
+                if global_variables.segment_save_mode == 'single_env':
+                    env = SaveSegments(env, segments_queue)
                 env = SaveMidStateWrapper(env, reset_state_receiver_queue)
 
             return env

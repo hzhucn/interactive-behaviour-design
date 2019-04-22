@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument('--redo_policy', action='store_true')
     parser.add_argument('--noisy_policies', action='store_true')
     parser.add_argument('--max_demonstration_length', type=int)
+    parser.add_argument('--segment_save_mode', choices=['single_env', 'multi_env'], default='single_env')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--log_dir')
     seconds_since_epoch = str(int(time.time()))
@@ -43,7 +44,8 @@ def parse_args():
     parser.add_argument('--max_segs', type=int, default=1000)
     args = parser.parse_args()
 
-    global_variables.max_segs = args.max_segments
+    global_variables.segment_save_mode = args.segment_save_mode
+    global_variables.max_segs = args.max_segs
 
     if args.render_every_nth_episode is None:
         if 'Fetch' in args.env:

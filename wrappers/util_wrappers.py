@@ -1,4 +1,3 @@
-import logging
 import multiprocessing
 import os
 import pickle
@@ -24,6 +23,7 @@ import global_constants
 from a2c.common.vec_env.subproc_vec_env import SubprocVecEnv as A2CSubprocVecEnv
 from baselines import logger
 from a2c.common.vec_env import VecEnvWrapper
+from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv as BaselinesSubprocVecEnv
 from classifier_collection import ClassifierCollection
 from drlhp.reward_predictor import RewardPredictor
 from utils import unwrap_to, EnvState, TimerContext
@@ -493,6 +493,67 @@ class DummyRender(Wrapper):
 
     def reset(self):
         return self.env.reset()
+
+
+class VecSaveSegments(VecEnvWrapper):
+    def __init__(self, venv, segment_queue: multiprocessing.Queue):
+        assert isinstance(venv, A2CSubprocVecEnv)
+        # A2CSubprocVecEnv's render() tiles frames from all environments, which is not ideal for us.
+        # Why not switch to BaselinseSubprocVecEnv throughout?
+        # Because I haven't checked how different it is to A2CSubprocVecEnv.
+        A2CSubprocVecEnv.get_images = BaselinesSubprocVecEnv.get_images
+        A2CSubprocVecEnv._assert_not_closed = BaselinesSubprocVecEnv._assert_not_closed
+        super().__init__(venv)
+        self.queue = segment_queue
+        self.segment_frames = [None] * self.num_envs
+        self.segment_obses = [None] * self.num_envs
+        self.segment_rewards = [None] * self.num_envs
+        for n in range(self.num_envs):
+            self._reset_segment(n)
+
+    def _reset_segment(self, n):
+        self.segment_frames[n] = []
+        self.segment_obses[n] = []
+        self.segment_rewards[n] = []
+
+    def _pad_segment(self, n):
+        while len(self.segment_obses[n]) < global_constants.FRAMES_PER_SEGMENT:
+            self.segment_frames[n].append(self.segment_frames[n][-1])
+            self.segment_obses[n].append(self.segment_obses[n][-1])
+            self.segment_rewards[n].append(self.segment_rewards[n][-1])
+
+    def step_wait(self):
+        obses, rewards, dones, infos = self.venv.step_wait()
+        frames = self.venv.get_images()
+
+        for n in range(self.num_envs):
+            # When done, SubprocVecEnv automatically resets the environment,
+            # and we don't want the frame from the resetted environment in this segment
+            if not dones[n]:
+                self.segment_frames[n].append(frames[n])
+                self.segment_obses[n].append(np.copy(obses[n]))
+                self.segment_rewards[n].append(rewards[n])
+
+            # We could get unlucky and get a 'done' just after we've reset the segment,
+            # so we need to be careful about the segment being empty
+            if (dones[n] and len(self.segment_obses[n]) > 0) or \
+                    len(self.segment_obses[n]) == global_constants.FRAMES_PER_SEGMENT:
+                self._pad_segment(n)
+                tuple = (self.segment_obses[n], self.segment_rewards[n], self.segment_frames[n])
+                try:
+                    self.queue.put(tuple, block=False)
+                except queue.Full:
+                    pass
+                self._reset_segment(n)
+        return obses, rewards, dones, infos
+
+    def reset(self):
+        # We assume we're wrapping a SubprocVecEnv, which normally doesn't need to be reset, so that if we
+        # receive an explicit reset, we're doing something unusual. We might be part-way through an episode and only
+        # have a couple of frames in the segment so far, so let's play it safe by dropping the current segment.
+        for n in range(self.num_envs):
+            self._reset_segment(n)
+        return self.venv.reset()
 
 
 class SaveSegments(Wrapper):

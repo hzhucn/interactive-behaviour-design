@@ -5,4 +5,5 @@
 # should acquire this lock before attempting the creation.
 env_creation_lock = None
 
+segment_save_mode = None
 max_segs = None
