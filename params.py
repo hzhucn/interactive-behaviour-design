@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 import os
 from os import path as osp
 
+import global_variables
 from baselines import logger
 from utils import save_args, get_git_rev
 
@@ -39,7 +40,10 @@ def parse_args():
     group.add_argument('--run_name', default='test-run_{}'.format(seconds_since_epoch))
     parser.add_argument('--demonstrations_buffer_len', type=int, default=3000)
     parser.add_argument('--rstd', type=float)
+    parser.add_argument('--max_segs', type=int, default=1000)
     args = parser.parse_args()
+
+    global_variables.max_segs = args.max_segments
 
     if args.render_every_nth_episode is None:
         if 'Fetch' in args.env:

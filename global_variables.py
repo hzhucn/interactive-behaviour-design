@@ -4,3 +4,5 @@
 # Any thread which creates environments (which includes restoring from a reset state)
 # should acquire this lock before attempting the creation.
 env_creation_lock = None
+
+max_segs = None

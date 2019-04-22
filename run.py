@@ -20,7 +20,6 @@ import psutil
 from gym.envs.robotics.robot_env import RobotEnv
 
 from basicfetch import basicfetch
-from global_constants import MAX_SEGS
 from policies.fetch import FetchAction, FetchPPOPolicy
 from policies.policy_collection import PolicyCollection
 from policies.ppo import PPOPolicy
@@ -183,7 +182,7 @@ def main():
                                        rollout_len_seconds=args.rollout_length_seconds,
                                        show_from_end_seconds=args.show_from_end)
 
-    Process(target=monitor_segments_dir_loop, args=(segments_dir, MAX_SEGS)).start()
+    Process(target=monitor_segments_dir_loop, args=(segments_dir, global_variables.max_segs)).start()
     Process(target=write_segments_loop, args=[segments_queue, segments_dir]).start()
 
     # Create initial stuff
