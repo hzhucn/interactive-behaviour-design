@@ -13,8 +13,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import global_variables
 from wrappers.dummy_env import DummyEnv
-from wrappers.util_wrappers import SaveMidStateWrapper, StateBoundaryWrapper, RepeatActions
-
+from wrappers.util_wrappers import SaveMidStateWrapper, RepeatActions, VecSaveSegments
+from wrappers.state_boundary_wrapper import StateBoundaryWrapper
 
 
 class TestSaveMidState(unittest.TestCase):

@@ -27,6 +27,7 @@ from a2c.common.vec_env import VecEnvWrapper
 from classifier_collection import ClassifierCollection
 from drlhp.reward_predictor import RewardPredictor
 from utils import unwrap_to, EnvState, TimerContext
+from wrappers.state_boundary_wrapper import StateBoundaryWrapper
 
 
 class DrawClassifierPredictionWrapper(ObservationWrapper):
@@ -435,14 +436,6 @@ class SaveMidStateWrapper(Wrapper):
         self.step_n = 1
 
         return self.env.reset()
-
-
-class StateBoundaryWrapper(Wrapper):
-    def reset(self):
-        return self.env.reset()
-
-    def step(self, action):
-        return self.env.step(action)
 
 
 class OneLifeWrapper(Wrapper):
